@@ -1,0 +1,41 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+.next/
+
+# Logs
+logs/
+*.log
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor directories and files
+.vscode/
+.idea/
+
+# Environment files (ignore actual secrets)
+# Keep `.env.example` committed as a template; ignore real envs
+.env
+.env.local
+.env.*.local
+
+# Docker
+docker-compose.override.yml
+
+# Kubernetes
+.kube/
+
+# Misc
+.cache/
+.turbo/
+/.parcel-cache/

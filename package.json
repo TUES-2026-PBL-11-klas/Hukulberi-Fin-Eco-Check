@@ -1,0 +1,29 @@
+{
+  "name": "ecocheck",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npm run build -w apps/frontend && npm run build -w apps/backend"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TUES-2026-PBL-11-klas/Hukulberi-Fin-Eco-Check.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/TUES-2026-PBL-11-klas/Hukulberi-Fin-Eco-Check/issues"
+  },
+  "homepage": "https://github.com/TUES-2026-PBL-11-klas/Hukulberi-Fin-Eco-Check#readme",
+  "private": "true",
+  "workspaces": [
+    "apps/frontend",
+    "apps/backend"
+  ],
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

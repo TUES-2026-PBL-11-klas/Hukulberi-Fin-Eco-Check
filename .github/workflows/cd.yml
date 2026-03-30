@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 env:
   BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/ecocheck-backend
   FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/ecocheck-frontend

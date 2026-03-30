@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: docker.io/YOUR_DOCKERHUB_USERNAME/ecocheck-frontend:latest
+          image: docker.io/darkata/ecocheck-frontend:latest
           ports:
             - containerPort: 3000
           env:

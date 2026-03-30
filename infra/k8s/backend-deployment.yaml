@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: ecocheck
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: docker.io/YOUR_DOCKERHUB_USERNAME/ecocheck-backend:latest
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: backend-secret

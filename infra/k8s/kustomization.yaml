@@ -8,3 +8,8 @@ resources:
   - frontend-deployment.yaml
   - frontend-service.yaml
   - ingress.yaml
+images:
+  - name: docker.io/darkata/ecocheck-backend
+    newTag: latest
+  - name: docker.io/darkata/ecocheck-frontend
+    newTag: latest

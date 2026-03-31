@@ -7,22 +7,29 @@ on:
 permissions:
   contents: write
 
-env:
-  BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/ecocheck-backend
-  FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/ecocheck-frontend
-
 jobs:
   build-and-push:
     name: Build & Push Docker Images
     runs-on: ubuntu-latest
+    env:
+      BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/ecocheck-backend
+      FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/ecocheck-frontend
     outputs:
       image_tag: ${{ steps.meta.outputs.tag }}
+      backend_image: ${{ steps.images.outputs.backend }}
+      frontend_image: ${{ steps.images.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Generate image tag
         id: meta
         run: echo "tag=$(echo $GITHUB_SHA | head -c 7)" >> "$GITHUB_OUTPUT"
+
+      - name: Export image names
+        id: images
+        run: |
+          echo "backend=${{ env.BACKEND_IMAGE }}" >> "$GITHUB_OUTPUT"
+          echo "frontend=${{ env.FRONTEND_IMAGE }}" >> "$GITHUB_OUTPUT"
 
       - name: Login to DockerHub
         uses: docker/login-action@v3
@@ -64,8 +71,8 @@ jobs:
         working-directory: infra/k8s
         run: |
           kustomize edit set image \
-            ${{ env.BACKEND_IMAGE }}=${{ env.BACKEND_IMAGE }}:${{ needs.build-and-push.outputs.image_tag }} \
-            ${{ env.FRONTEND_IMAGE }}=${{ env.FRONTEND_IMAGE }}:${{ needs.build-and-push.outputs.image_tag }}
+            ${{ needs.build-and-push.outputs.backend_image }}=${{ needs.build-and-push.outputs.backend_image }}:${{ needs.build-and-push.outputs.image_tag }} \
+            ${{ needs.build-and-push.outputs.frontend_image }}=${{ needs.build-and-push.outputs.frontend_image }}:${{ needs.build-and-push.outputs.image_tag }}
 
       - name: Commit updated manifests
         run: |

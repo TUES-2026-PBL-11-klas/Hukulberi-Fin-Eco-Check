@@ -17,6 +17,7 @@ coverage/
 
 # OS
 Thumbs.db
+DS_Store
 
 # Editor directories and files
 .vscode/

@@ -1,15 +1,16 @@
 FROM node:20-alpine AS builder
-WORKDIR /usr/src/app
+WORKDIR /workspace
 COPY package*.json ./
+COPY apps/frontend/package*.json ./apps/frontend/
 RUN npm ci
-COPY . .
-RUN npm run build
+COPY apps/frontend ./apps/frontend
+RUN npm run build -w apps/frontend
 
 FROM node:20-alpine
-WORKDIR /usr/src/app
+WORKDIR /workspace
 ENV NODE_ENV=production
-COPY --from=builder /usr/src/app/public ./public
-COPY --from=builder /usr/src/app/.next/standalone ./
-COPY --from=builder /usr/src/app/.next/static ./.next/static
+COPY --from=builder /workspace/apps/frontend/public ./public
+COPY --from=builder /workspace/apps/frontend/.next/standalone ./
+COPY --from=builder /workspace/apps/frontend/.next/static ./.next/static
 EXPOSE 3000
 CMD ["node","server.js"]

@@ -40,4 +40,4 @@ async function bootstrap() {
   console.log(`🚀 EcoCheck API running on http://localhost:${port}`);
   console.log(`📚 Swagger docs at http://localhost:${port}/api`);
 }
-bootstrap();
+void bootstrap();

@@ -130,8 +130,9 @@ export class AdminService implements OnModuleInit {
 
   async getFeatureFlag(key: string): Promise<FeatureFlag> {
     const flag = await this.featureFlagRepo.findOneBy({ key });
-    if (!flag)
+    if (!flag) {
       throw new NotFoundException(`Feature flag "${key}" not found`);
+    }
     return flag;
   }
 

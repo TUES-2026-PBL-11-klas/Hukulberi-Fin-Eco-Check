@@ -1,15 +1,13 @@
-FROM node:20-alpine AS builder
-WORKDIR /usr/src/app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-
 FROM node:20-alpine
-WORKDIR /usr/src/app
+WORKDIR /workspace
 ENV NODE_ENV=production
-COPY --from=builder /usr/src/app/package*.json ./
-RUN npm ci --omit=dev
-COPY --from=builder /usr/src/app/dist ./dist
+
+COPY package*.json ./
+COPY apps/backend/package*.json ./apps/backend/
+RUN npm ci
+
+COPY apps/backend ./apps/backend
+RUN npm run build -w apps/backend
+
 EXPOSE 3000
-CMD ["node","dist/main.js"]
+CMD ["node","apps/backend/dist/main.js"]

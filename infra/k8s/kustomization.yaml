@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: ecocheck
 resources:
 - namespace.yaml
+- backend-secret.yaml
 - backend-deployment.yaml
 - backend-service.yaml
 - frontend-deployment.yaml

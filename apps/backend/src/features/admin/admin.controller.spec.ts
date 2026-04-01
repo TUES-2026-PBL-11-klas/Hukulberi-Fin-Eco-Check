@@ -70,6 +70,7 @@ describe('AdminController', () => {
     it('should return dashboard stats', async () => {
       const result = await controller.getStats();
       expect(result).toEqual(mockStats);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(service.getStats).toHaveBeenCalled();
     });
   });
@@ -78,6 +79,7 @@ describe('AdminController', () => {
     it('should return all configs', async () => {
       const result = await controller.getAllConfigs();
       expect(result).toEqual([mockConfig]);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(service.getAllConfigs).toHaveBeenCalled();
     });
   });
@@ -86,6 +88,7 @@ describe('AdminController', () => {
     it('should return a single config by key', async () => {
       const result = await controller.getConfig('app.name');
       expect(result).toEqual(mockConfig);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(service.getConfigByKey).toHaveBeenCalledWith('app.name');
     });
   });
@@ -95,6 +98,7 @@ describe('AdminController', () => {
       const dto = { key: 'app.name', value: 'EcoCheck' };
       const result = await controller.createConfig(dto);
       expect(result).toEqual(mockConfig);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(service.createConfig).toHaveBeenCalledWith(dto);
     });
   });
@@ -104,6 +108,7 @@ describe('AdminController', () => {
       const dto = { value: 'NewValue' };
       const result = await controller.updateConfig('app.name', dto);
       expect(result).toEqual(mockConfig);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(service.updateConfig).toHaveBeenCalledWith('app.name', dto);
     });
   });
@@ -111,6 +116,7 @@ describe('AdminController', () => {
   describe('deleteConfig', () => {
     it('should delete a config entry', async () => {
       await controller.deleteConfig('app.name');
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(service.deleteConfig).toHaveBeenCalledWith('app.name');
     });
   });
@@ -119,6 +125,7 @@ describe('AdminController', () => {
     it('should return all feature flags', async () => {
       const result = await controller.getAllFeatureFlags();
       expect(result).toEqual([mockFlag]);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(service.getAllFeatureFlags).toHaveBeenCalled();
     });
   });
@@ -128,6 +135,7 @@ describe('AdminController', () => {
       const dto = { enabled: false };
       const result = await controller.updateFeatureFlag('eco-scoring', dto);
       expect(result).toEqual(mockFlag);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(service.updateFeatureFlag).toHaveBeenCalledWith(
         'eco-scoring',
         dto,

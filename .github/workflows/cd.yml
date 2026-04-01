@@ -3,6 +3,8 @@ name: CD
 on:
   push:
     branches: [main, dev]
+    paths-ignore:
+      - infra/k8s/kustomization.yaml
 
 permissions:
   contents: write
@@ -12,8 +14,8 @@ jobs:
     name: Build & Push Docker Images
     runs-on: ubuntu-latest
     env:
-      BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/ecocheck-backend
-      FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/ecocheck-frontend
+      BACKEND_IMAGE: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/ecocheck-backend
+      FRONTEND_IMAGE: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/ecocheck-frontend
     outputs:
       image_tag: ${{ steps.meta.outputs.tag }}
       backend_image: ${{ steps.images.outputs.backend }}

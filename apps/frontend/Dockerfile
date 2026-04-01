@@ -2,7 +2,7 @@ FROM node:20-alpine AS builder
 WORKDIR /workspace
 COPY package*.json ./
 COPY apps/frontend/package*.json ./apps/frontend/
-RUN HUSKY=0 npm ci
+RUN HUSKY=0 npm ci --ignore-scripts
 COPY apps/frontend ./apps/frontend
 RUN npm run build -w apps/frontend
 

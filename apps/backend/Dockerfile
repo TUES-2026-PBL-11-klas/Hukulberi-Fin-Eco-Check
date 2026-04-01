@@ -3,7 +3,7 @@ WORKDIR /workspace
 
 COPY package*.json ./
 COPY apps/backend/package*.json ./apps/backend/
-RUN HUSKY=0 npm ci
+RUN HUSKY=0 npm ci --ignore-scripts
 
 COPY apps/backend ./apps/backend
 RUN npm run build -w apps/backend
@@ -14,7 +14,7 @@ ENV NODE_ENV=production
 
 COPY package*.json ./
 COPY apps/backend/package*.json ./apps/backend/
-RUN HUSKY=0 npm ci --omit=dev
+RUN HUSKY=0 npm ci --omit=dev --ignore-scripts
 
 COPY --from=builder /workspace/apps/backend/dist ./apps/backend/dist
 

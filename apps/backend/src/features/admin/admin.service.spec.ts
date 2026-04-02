@@ -1,9 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { Config } from './schemas/config.entity';
-import { FeatureFlag } from './schemas/feature-flag.entity';
+import { PrismaService } from '../../prisma/prisma.service';
 
 describe('AdminService', () => {
   let service: AdminService;
@@ -26,30 +24,30 @@ describe('AdminService', () => {
     updatedAt: new Date(),
   };
 
-  const mockConfigRepo = {
-    find: jest.fn().mockResolvedValue([mockConfig]),
-    findOneBy: jest.fn().mockResolvedValue(mockConfig),
-    create: jest.fn().mockReturnValue(mockConfig),
-    save: jest.fn().mockResolvedValue(mockConfig),
-    remove: jest.fn().mockResolvedValue(undefined),
-    count: jest.fn().mockResolvedValue(4),
-  };
-
-  const mockFlagRepo = {
-    find: jest.fn().mockResolvedValue([mockFlag]),
-    findOneBy: jest.fn().mockResolvedValue(mockFlag),
-    create: jest.fn().mockReturnValue(mockFlag),
-    save: jest.fn().mockResolvedValue(mockFlag),
-    count: jest.fn().mockResolvedValue(4),
-    countBy: jest.fn().mockResolvedValue(2),
+  const mockPrisma = {
+    config: {
+      findMany: jest.fn().mockResolvedValue([mockConfig]),
+      findUnique: jest.fn().mockResolvedValue(mockConfig),
+      create: jest.fn().mockResolvedValue(mockConfig),
+      update: jest.fn().mockResolvedValue(mockConfig),
+      delete: jest.fn().mockResolvedValue(mockConfig),
+      count: jest.fn().mockResolvedValue(4),
+      upsert: jest.fn().mockResolvedValue(mockConfig),
+    },
+    featureFlag: {
+      findMany: jest.fn().mockResolvedValue([mockFlag]),
+      findUnique: jest.fn().mockResolvedValue(mockFlag),
+      update: jest.fn().mockResolvedValue(mockFlag),
+      count: jest.fn().mockResolvedValue(4),
+      upsert: jest.fn().mockResolvedValue(mockFlag),
+    },
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AdminService,
-        { provide: getRepositoryToken(Config), useValue: mockConfigRepo },
-        { provide: getRepositoryToken(FeatureFlag), useValue: mockFlagRepo },
+        { provide: PrismaService, useValue: mockPrisma },
       ],
     }).compile();
 
@@ -68,8 +66,8 @@ describe('AdminService', () => {
     it('should return all configs ordered by key', async () => {
       const result = await service.getAllConfigs();
       expect(result).toEqual([mockConfig]);
-      expect(mockConfigRepo.find).toHaveBeenCalledWith({
-        order: { key: 'ASC' },
+      expect(mockPrisma.config.findMany).toHaveBeenCalledWith({
+        orderBy: { key: 'asc' },
       });
     });
   });
@@ -81,7 +79,7 @@ describe('AdminService', () => {
     });
 
     it('should throw NotFoundException if config not found', async () => {
-      mockConfigRepo.findOneBy.mockResolvedValueOnce(null);
+      mockPrisma.config.findUnique.mockResolvedValueOnce(null);
       await expect(service.getConfigByKey('missing')).rejects.toThrow(
         NotFoundException,
       );
@@ -93,8 +91,13 @@ describe('AdminService', () => {
       const dto = { key: 'app.name', value: 'EcoCheck' };
       const result = await service.createConfig(dto);
       expect(result).toEqual(mockConfig);
-      expect(mockConfigRepo.create).toHaveBeenCalledWith(dto);
-      expect(mockConfigRepo.save).toHaveBeenCalled();
+      expect(mockPrisma.config.create).toHaveBeenCalledWith({
+        data: {
+          key: 'app.name',
+          value: 'EcoCheck',
+          description: '',
+        },
+      });
     });
   });
 
@@ -109,7 +112,9 @@ describe('AdminService', () => {
   describe('deleteConfig', () => {
     it('should remove a config entry', async () => {
       await service.deleteConfig('app.name');
-      expect(mockConfigRepo.remove).toHaveBeenCalledWith(mockConfig);
+      expect(mockPrisma.config.delete).toHaveBeenCalledWith({
+        where: { key: 'app.name' },
+      });
     });
   });
 
@@ -127,7 +132,7 @@ describe('AdminService', () => {
     });
 
     it('should throw NotFoundException if flag not found', async () => {
-      mockFlagRepo.findOneBy.mockResolvedValueOnce(null);
+      mockPrisma.featureFlag.findUnique.mockResolvedValueOnce(null);
       await expect(service.getFeatureFlag('missing')).rejects.toThrow(
         NotFoundException,
       );
@@ -144,6 +149,10 @@ describe('AdminService', () => {
 
   describe('getStats', () => {
     it('should return stats', async () => {
+      mockPrisma.featureFlag.count
+        .mockResolvedValueOnce(4)
+        .mockResolvedValueOnce(2);
+
       const result = await service.getStats();
       expect(result.totalConfigs).toBe(4);
       expect(result.totalFlags).toBe(4);

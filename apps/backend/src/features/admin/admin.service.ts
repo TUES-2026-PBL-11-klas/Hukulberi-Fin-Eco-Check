@@ -4,8 +4,7 @@ import {
   OnModuleInit,
   Logger,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { PrismaService } from '../../prisma/prisma.service';
 import { Config } from './schemas/config.entity';
 import { FeatureFlag } from './schemas/feature-flag.entity';
 import { UpdateConfigDto } from './dto/update-config.dto';
@@ -16,12 +15,7 @@ import { UpdateFeatureFlagDto } from './dto/update-feature-flag.dto';
 export class AdminService implements OnModuleInit {
   private readonly logger = new Logger(AdminService.name);
 
-  constructor(
-    @InjectRepository(Config)
-    private readonly configRepo: Repository<Config>,
-    @InjectRepository(FeatureFlag)
-    private readonly featureFlagRepo: Repository<FeatureFlag>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   /** Seed default feature flags if they don't exist yet */
   async onModuleInit() {
@@ -49,11 +43,12 @@ export class AdminService implements OnModuleInit {
     ];
 
     for (const def of defaults) {
-      const exists = await this.featureFlagRepo.findOneBy({ key: def.key });
-      if (!exists) {
-        await this.featureFlagRepo.save(this.featureFlagRepo.create(def));
-        this.logger.log(`Seeded feature flag: ${def.key}`);
-      }
+      await this.prisma.featureFlag.upsert({
+        where: { key: def.key },
+        update: {},
+        create: def,
+      });
+      this.logger.log(`Seeded feature flag: ${def.key}`);
     }
 
     // Seed default config entries
@@ -86,50 +81,61 @@ export class AdminService implements OnModuleInit {
     ];
 
     for (const cfg of configDefaults) {
-      const exists = await this.configRepo.findOneBy({ key: cfg.key });
-      if (!exists) {
-        await this.configRepo.save(this.configRepo.create(cfg));
-        this.logger.log(`Seeded config: ${cfg.key}`);
-      }
+      await this.prisma.config.upsert({
+        where: { key: cfg.key },
+        update: {},
+        create: cfg,
+      });
+      this.logger.log(`Seeded config: ${cfg.key}`);
     }
   }
 
   // ── Config CRUD ──────────────────────────────────────────────
 
-  async getAllConfigs(): Promise<Config[]> {
-    return this.configRepo.find({ order: { key: 'ASC' } });
+  getAllConfigs(): Promise<Config[]> {
+    return this.prisma.config.findMany({ orderBy: { key: 'asc' } });
   }
 
   async getConfigByKey(key: string): Promise<Config> {
-    const config = await this.configRepo.findOneBy({ key });
+    const config = await this.prisma.config.findUnique({ where: { key } });
     if (!config) throw new NotFoundException(`Config "${key}" not found`);
     return config;
   }
 
-  async createConfig(dto: CreateConfigDto): Promise<Config> {
-    const config = this.configRepo.create(dto);
-    return this.configRepo.save(config);
+  createConfig(dto: CreateConfigDto): Promise<Config> {
+    return this.prisma.config.create({
+      data: {
+        key: dto.key,
+        value: dto.value,
+        description: dto.description ?? '',
+      },
+    });
   }
 
   async updateConfig(key: string, dto: UpdateConfigDto): Promise<Config> {
-    const config = await this.getConfigByKey(key);
-    Object.assign(config, dto);
-    return this.configRepo.save(config);
+    await this.getConfigByKey(key);
+    return this.prisma.config.update({
+      where: { key },
+      data: {
+        value: dto.value,
+        description: dto.description,
+      },
+    });
   }
 
   async deleteConfig(key: string): Promise<void> {
-    const config = await this.getConfigByKey(key);
-    await this.configRepo.remove(config);
+    await this.getConfigByKey(key);
+    await this.prisma.config.delete({ where: { key } });
   }
 
   // ── Feature Flags ────────────────────────────────────────────
 
-  async getAllFeatureFlags(): Promise<FeatureFlag[]> {
-    return this.featureFlagRepo.find({ order: { key: 'ASC' } });
+  getAllFeatureFlags(): Promise<FeatureFlag[]> {
+    return this.prisma.featureFlag.findMany({ orderBy: { key: 'asc' } });
   }
 
   async getFeatureFlag(key: string): Promise<FeatureFlag> {
-    const flag = await this.featureFlagRepo.findOneBy({ key });
+    const flag = await this.prisma.featureFlag.findUnique({ where: { key } });
     if (!flag) {
       throw new NotFoundException(`Feature flag "${key}" not found`);
     }
@@ -140,18 +146,25 @@ export class AdminService implements OnModuleInit {
     key: string,
     dto: UpdateFeatureFlagDto,
   ): Promise<FeatureFlag> {
-    const flag = await this.getFeatureFlag(key);
-    Object.assign(flag, dto);
-    return this.featureFlagRepo.save(flag);
+    await this.getFeatureFlag(key);
+    return this.prisma.featureFlag.update({
+      where: { key },
+      data: {
+        enabled: dto.enabled,
+        description: dto.description,
+      },
+    });
   }
 
   // ── Stats ────────────────────────────────────────────────────
 
   async getStats() {
-    const totalConfigs = await this.configRepo.count();
-    const totalFlags = await this.featureFlagRepo.count();
-    const enabledFlags = await this.featureFlagRepo.countBy({
-      enabled: true,
+    const totalConfigs = await this.prisma.config.count();
+    const totalFlags = await this.prisma.featureFlag.count();
+    const enabledFlags = await this.prisma.featureFlag.count({
+      where: {
+        enabled: true,
+      },
     });
 
     return {

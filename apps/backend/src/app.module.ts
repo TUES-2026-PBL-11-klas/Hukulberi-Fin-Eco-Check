@@ -1,11 +1,10 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AdminModule } from './features/admin/admin.module';
-import { Config } from './features/admin/schemas/config.entity';
-import { FeatureFlag } from './features/admin/schemas/feature-flag.entity';
+import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -15,23 +14,9 @@ import { FeatureFlag } from './features/admin/schemas/feature-flag.entity';
       envFilePath: '.env',
     }),
 
-    // PostgreSQL via Supabase
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        url: configService.get<string>('DATABASE_URL'),
-        entities: [Config, FeatureFlag],
-        synchronize: configService.get('NODE_ENV') !== 'production',
-        ssl:
-          configService.get('NODE_ENV') === 'production'
-            ? { rejectUnauthorized: false }
-            : false,
-      }),
-    }),
-
     // Feature modules
+    PrismaModule,
+    AuthModule,
     AdminModule,
   ],
   controllers: [AppController],

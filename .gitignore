@@ -39,3 +39,5 @@ docker-compose.override.yml
 .cache/
 .turbo/
 /.parcel-cache/
+
+/generated/prisma

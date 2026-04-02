@@ -3,13 +3,14 @@ kind: Kustomization
 namespace: ecocheck
 resources:
 - namespace.yaml
+- backend-secret.yaml
 - backend-deployment.yaml
 - backend-service.yaml
 - frontend-deployment.yaml
 - frontend-service.yaml
 - ingress.yaml
 images:
-- newTag: bf6cc95
+- newTag: 1e76488
 - name: docker.io/darkata/ecocheck-backend
   newTag: latest
 - name: docker.io/darkata/ecocheck-frontend

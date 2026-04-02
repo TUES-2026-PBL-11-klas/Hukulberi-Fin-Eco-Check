@@ -74,7 +74,7 @@ jobs:
         run: npm run prisma:generate -w apps/backend
 
       - name: Install Linux native frontend binaries
-        run: npm install -w apps/frontend --no-save @next/swc-linux-x64-gnu@16.1.6 lightningcss-linux-x64-gnu@1.31.1
+        run: npm install -w apps/frontend --no-save @next/swc-linux-x64-gnu@16.1.6 lightningcss-linux-x64-gnu@1.31.1 @tailwindcss/oxide-linux-x64-gnu@4.2.1
 
       - name: Build backend
         run: npm run build -w apps/backend

@@ -3,7 +3,7 @@ WORKDIR /workspace
 COPY package*.json ./
 COPY apps/frontend/package*.json ./apps/frontend/
 RUN HUSKY=0 npm ci --ignore-scripts
-RUN npm install -w apps/frontend --no-save @next/swc-linux-x64-gnu@16.1.6 lightningcss-linux-x64-gnu@1.31.1 @tailwindcss/oxide-linux-x64-gnu@4.2.1
+RUN npm install -w apps/frontend --no-save @next/swc-linux-x64-musl@16.1.6 lightningcss-linux-x64-musl@1.31.1 @tailwindcss/oxide-linux-x64-musl@4.2.1
 COPY apps/frontend ./apps/frontend
 RUN npm run build -w apps/frontend
 

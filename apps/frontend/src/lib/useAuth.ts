@@ -12,8 +12,9 @@ interface User {
 }
 
 export function useAuth(options?: { redirect?: boolean }) {
+  const hasToken = typeof window !== "undefined" && !!getToken();
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(hasToken);
   const router = useRouter();
   const shouldRedirect = options?.redirect ?? true;
 
@@ -21,7 +22,6 @@ export function useAuth(options?: { redirect?: boolean }) {
     const token = getToken();
 
     if (!token) {
-      setLoading(false);
       if (shouldRedirect) router.replace("/login");
       return;
     }

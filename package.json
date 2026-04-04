@@ -35,5 +35,8 @@
   },
   "overrides": {
     "axios": "1.13.2"
+  },
+  "dependencies": {
+    "supabase": "^2.84.8"
   }
 }

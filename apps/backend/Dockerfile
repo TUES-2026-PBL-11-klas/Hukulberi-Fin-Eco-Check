@@ -17,7 +17,9 @@ COPY package*.json ./
 COPY apps/backend/package*.json ./apps/backend/
 RUN HUSKY=0 npm ci --omit=dev --ignore-scripts
 
-COPY --from=builder /workspace/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /workspace/apps/backend/prisma ./apps/backend/prisma
+COPY --from=builder /workspace/apps/backend/prisma.config.ts ./apps/backend/prisma.config.ts
+RUN npx -w apps/backend prisma generate --schema apps/backend/prisma/schema.prisma
 
 COPY --from=builder /workspace/apps/backend/dist ./apps/backend/dist
 

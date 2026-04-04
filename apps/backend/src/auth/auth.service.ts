@@ -56,6 +56,25 @@ export class AuthService {
     return this.buildTokenResponse(user.id, user.email, user.role);
   }
 
+  async getMe(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    return user;
+  }
+
   private buildTokenResponse(id: string, email: string, role: string) {
     const payload = { sub: id, email, role };
     return {

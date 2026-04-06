@@ -14,6 +14,25 @@ enum UserRole {
   DISPATCHER
 }
 
+enum ReportStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum TriageStatus {
+  PENDING
+  TRIAGED
+  FAILED
+}
+
+enum AiUrgency {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
 model User {
   id          String   @id @default(uuid())
   email       String   @unique
@@ -22,8 +41,37 @@ model User {
   role        UserRole @default(CITIZEN)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  reports     Report[]
 
   @@map("users")
+}
+
+model Report {
+  id          String       @id @default(uuid())
+  title       String
+  description String
+  location    String
+  photoUrl    String?
+  status      ReportStatus @default(NEW)
+
+  // AI triage fields — populated by Boris's Gemini service
+  triageStatus TriageStatus @default(PENDING)
+  aiCategory   String?
+  aiUrgency    AiUrgency?
+  aiConfidence Float?
+  aiReasoning  String?
+  triagedAt    DateTime?
+
+  // Dispatcher assignment — populated by Georgi's service
+  assignedUnit String?
+  assignedAt   DateTime?
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("reports")
 }
 
 model Config {

@@ -1,19 +1,25 @@
-import { IsNotEmpty, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUrl,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateReportDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(120)
-  title: string;
+  title!: string;
 
   @IsString()
   @IsNotEmpty()
   @MaxLength(2000)
-  description: string;
+  description!: string;
 
   @IsString()
   @IsNotEmpty()
-  location: string;
+  location!: string;
 
   @IsOptional()
   @IsUrl()

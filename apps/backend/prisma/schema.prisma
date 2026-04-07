@@ -33,6 +33,15 @@ enum AiUrgency {
   CRITICAL
 }
 
+enum AiCategory {
+  WASTE
+  GREENERY
+  ROAD_INFRASTRUCTURE
+  ILLEGAL_PARKING
+  WATER_SEWER
+  OTHER
+}
+
 model User {
   id          String   @id @default(uuid())
   email       String   @unique
@@ -56,7 +65,7 @@ model Report {
 
   // AI triage fields — populated by Boris's Gemini service
   triageStatus TriageStatus @default(PENDING)
-  aiCategory   String?
+  aiCategory   AiCategory?
   aiUrgency    AiUrgency?
   aiConfidence Float?
   aiReasoning  String?

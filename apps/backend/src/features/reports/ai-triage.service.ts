@@ -47,40 +47,34 @@ export class AiTriageService {
     }
 
     const prompt = this.buildPrompt(input);
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          generationConfig: {
-            responseMimeType: 'application/json',
-          },
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: prompt }],
-            },
-          ],
-        }),
-      },
-    );
+    const models = [
+      'gemini-1.5-flash-8b',
+      'gemini-1.5-flash',
+      'gemini-1.5-flash-latest',
+      'gemini-2.0-flash',
+    ];
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Gemini request failed: ${response.status} ${errorText}`);
+    let rawText = '';
+    const modelErrors: string[] = [];
+
+    for (const model of models) {
+      try {
+        rawText = await this.generateWithModel(apiKey, model, prompt);
+        if (rawText) break;
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unknown Gemini error';
+        modelErrors.push(`${model}: ${message}`);
+      }
     }
 
-    const payload = (await response.json()) as GeminiResponse;
-    const rawText = payload.candidates?.[0]?.content?.parts
-      ?.map((part) => part.text ?? '')
-      .join('')
-      .trim();
-
     if (!rawText) {
-      throw new Error('Gemini returned an empty response');
+      const joinedErrors = modelErrors.join(' | ');
+      if (this.isQuotaError(joinedErrors)) {
+        return this.heuristicFallback(input, joinedErrors);
+      }
+
+      throw new Error(`Gemini triage failed for all models. ${joinedErrors}`);
     }
 
     const parsed = this.parseJson(rawText) as {
@@ -110,6 +104,90 @@ export class AiTriageService {
       `description: ${input.description}`,
       `location: ${input.location}`,
     ].join('\n');
+  }
+
+  private async generateWithModel(
+    apiKey: string,
+    model: string,
+    prompt: string,
+  ): Promise<string> {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          generationConfig: {
+            responseMimeType: 'application/json',
+          },
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: prompt }],
+            },
+          ],
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`${response.status} ${errorText}`);
+    }
+
+    const payload = (await response.json()) as GeminiResponse;
+    const rawText = payload.candidates?.[0]?.content?.parts
+      ?.map((part) => part.text ?? '')
+      .join('')
+      .trim();
+
+    if (!rawText) {
+      throw new Error('Empty response payload');
+    }
+
+    return rawText;
+  }
+
+  private isQuotaError(errorText: string): boolean {
+    const normalized = errorText.toLowerCase();
+    return normalized.includes('429') || normalized.includes('quota');
+  }
+
+  private heuristicFallback(
+    input: TriageInput,
+    errorText: string,
+  ): TriageResult {
+    const text =
+      `${input.title} ${input.description} ${input.location}`.toLowerCase();
+
+    let category: AiCategory = 'OTHER';
+    if (/bin|trash|garbage|waste|rubbish/.test(text)) category = 'WASTE';
+    else if (/tree|branch|green|park|grass/.test(text)) category = 'GREENERY';
+    else if (/pothole|road|street|asphalt|sidewalk|hole/.test(text))
+      category = 'ROAD_INFRASTRUCTURE';
+    else if (/parking|parked|car on|illegal parking/.test(text))
+      category = 'ILLEGAL_PARKING';
+    else if (/water|sewer|leak|pipe|flood/.test(text)) category = 'WATER_SEWER';
+
+    let urgency: AiUrgency = 'LOW';
+    if (/danger|urgent|immediate|accident|injury|risk/.test(text))
+      urgency = 'CRITICAL';
+    else if (/blocked|cannot pass|major|severe|flood/.test(text))
+      urgency = 'HIGH';
+    else if (/soon|growing|worsening/.test(text)) urgency = 'MEDIUM';
+
+    return {
+      category,
+      urgency,
+      confidence: 0.45,
+      reasoning:
+        `Gemini quota exceeded (429). Applied local fallback triage. ${errorText}`.slice(
+          0,
+          220,
+        ),
+    };
   }
 
   private parseJson(raw: string): unknown {

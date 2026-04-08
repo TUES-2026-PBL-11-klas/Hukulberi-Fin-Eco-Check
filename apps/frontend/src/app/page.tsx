@@ -80,7 +80,16 @@ export default function Home() {
             </p>
           </div>
 
-          <div style={{ ...styles.actionCard, cursor: "default" }}>
+          <div
+            style={styles.actionCard}
+            onClick={() => router.push("/reports")}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.background = "#f3f4f5")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.background = "#ffffff")
+            }
+          >
             <div style={styles.actionIcon}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
                 <path
@@ -89,11 +98,9 @@ export default function Home() {
                 />
               </svg>
             </div>
-            <h3 style={{ ...styles.actionTitle, color: "#bec9c3" }}>
-              My Reports
-            </h3>
+            <h3 style={styles.actionTitle}>My Reports</h3>
             <p style={styles.actionDesc}>
-              Track the status of your submitted reports. Coming soon.
+              Track category, urgency, and confidence from AI triage.
             </p>
           </div>
 

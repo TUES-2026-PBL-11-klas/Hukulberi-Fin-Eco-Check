@@ -38,6 +38,7 @@ type ReportListItem = {
   aiCategory: AiCategory | null;
   aiUrgency: AiUrgency | null;
   aiConfidence: number | null;
+  aiReasoning: string | null;
   createdAt: Date;
 };
 
@@ -78,6 +79,7 @@ type ReportModelDelegate = {
       aiCategory: true;
       aiUrgency: true;
       aiConfidence: true;
+      aiReasoning: true;
       createdAt: true;
     };
   }): Promise<ReportListItem[]>;
@@ -164,6 +166,7 @@ export class ReportsService {
         aiCategory: true,
         aiUrgency: true,
         aiConfidence: true,
+        aiReasoning: true,
         createdAt: true,
       },
     });

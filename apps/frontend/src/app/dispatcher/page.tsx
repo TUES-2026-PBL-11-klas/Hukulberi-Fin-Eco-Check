@@ -70,6 +70,7 @@ export default function DispatcherPage() {
   const [urgency, setUrgency] = useState<"ALL" | AiUrgency>("ALL");
   const [sortBy, setSortBy] = useState<SortBy>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) {
@@ -219,60 +220,70 @@ export default function DispatcherPage() {
           </div>
         </div>
 
-        <div style={styles.controlsGrid}>
-          <label style={styles.controlBlock}>
-            <span style={styles.controlLabel}>Category</span>
-            <select
-              value={category}
-              onChange={(event) => setCategory(event.target.value as "ALL" | AiCategory)}
-              style={styles.select}
-            >
-              {categoryFilters.map((value) => (
-                <option key={value} value={value}>
-                  {formatLabel(value)}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div style={styles.controlsShell}>
+          <div style={styles.controlsGrid}>
+            <label style={styles.controlBlock}>
+              <span style={styles.controlLabel}>Category</span>
+              <select
+                value={category}
+                onChange={(event) => setCategory(event.target.value as "ALL" | AiCategory)}
+                onFocus={() => setFocusedField("category")}
+                onBlur={() => setFocusedField(null)}
+                style={selectStyle(focusedField === "category")}
+              >
+                {categoryFilters.map((value) => (
+                  <option key={value} value={value}>
+                    {formatLabel(value)}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label style={styles.controlBlock}>
-            <span style={styles.controlLabel}>Urgency</span>
-            <select
-              value={urgency}
-              onChange={(event) => setUrgency(event.target.value as "ALL" | AiUrgency)}
-              style={styles.select}
-            >
-              {urgencyFilters.map((value) => (
-                <option key={value} value={value}>
-                  {formatLabel(value)}
-                </option>
-              ))}
-            </select>
-          </label>
+            <label style={styles.controlBlock}>
+              <span style={styles.controlLabel}>Urgency</span>
+              <select
+                value={urgency}
+                onChange={(event) => setUrgency(event.target.value as "ALL" | AiUrgency)}
+                onFocus={() => setFocusedField("urgency")}
+                onBlur={() => setFocusedField(null)}
+                style={selectStyle(focusedField === "urgency")}
+              >
+                {urgencyFilters.map((value) => (
+                  <option key={value} value={value}>
+                    {formatLabel(value)}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label style={styles.controlBlock}>
-            <span style={styles.controlLabel}>Sort by</span>
-            <select
-              value={sortBy}
-              onChange={(event) => setSortBy(event.target.value as SortBy)}
-              style={styles.select}
-            >
-              <option value="createdAt">Submitted Time</option>
-              <option value="urgency">Urgency</option>
-            </select>
-          </label>
+            <label style={styles.controlBlock}>
+              <span style={styles.controlLabel}>Sort by</span>
+              <select
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value as SortBy)}
+                onFocus={() => setFocusedField("sortBy")}
+                onBlur={() => setFocusedField(null)}
+                style={selectStyle(focusedField === "sortBy")}
+              >
+                <option value="createdAt">Submitted Time</option>
+                <option value="urgency">Urgency</option>
+              </select>
+            </label>
 
-          <label style={styles.controlBlock}>
-            <span style={styles.controlLabel}>Direction</span>
-            <select
-              value={sortDirection}
-              onChange={(event) => setSortDirection(event.target.value as SortDirection)}
-              style={styles.select}
-            >
-              <option value="desc">Descending</option>
-              <option value="asc">Ascending</option>
-            </select>
-          </label>
+            <label style={styles.controlBlock}>
+              <span style={styles.controlLabel}>Direction</span>
+              <select
+                value={sortDirection}
+                onChange={(event) => setSortDirection(event.target.value as SortDirection)}
+                onFocus={() => setFocusedField("sortDirection")}
+                onBlur={() => setFocusedField(null)}
+                style={selectStyle(focusedField === "sortDirection")}
+              >
+                <option value="desc">Descending</option>
+                <option value="asc">Ascending</option>
+              </select>
+            </label>
+          </div>
         </div>
 
         {error && <div style={styles.errorBox}>{error}</div>}
@@ -369,6 +380,13 @@ function urgencyBadge(urgency: AiUrgency): React.CSSProperties {
   return { ...styles.badgeBase, ...map[urgency] };
 }
 
+function selectStyle(isFocused: boolean): React.CSSProperties {
+  return {
+    ...styles.select,
+    ...(isFocused ? styles.selectFocused : null),
+  };
+}
+
 const styles: Record<string, React.CSSProperties> = {
   loadingWrapper: {
     minHeight: "100vh",
@@ -413,6 +431,10 @@ const styles: Record<string, React.CSSProperties> = {
   },
   heroSection: {
     marginBottom: "1.5rem",
+    padding: "1.5rem",
+    borderRadius: "1.5rem",
+    background:
+      "linear-gradient(135deg, rgba(0, 81, 63, 0.08) 0%, rgba(0, 107, 84, 0.12) 100%)",
   },
   badge: {
     fontFamily: "var(--font-inter), sans-serif",
@@ -472,7 +494,14 @@ const styles: Record<string, React.CSSProperties> = {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
     gap: "0.75rem",
+  },
+  controlsShell: {
     marginBottom: "1.25rem",
+    borderRadius: "1rem",
+    padding: "0.95rem",
+    background: "rgba(248, 249, 250, 0.8)",
+    backdropFilter: "blur(24px)",
+    boxShadow: "0 8px 24px -4px rgba(31, 41, 38, 0.06)",
   },
   controlBlock: {
     display: "flex",
@@ -488,17 +517,22 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: "0.05em",
   },
   select: {
-    border: "1px solid #d7dbd9",
-    background: "#fff",
+    border: "none",
+    outline: "none",
+    background: "#ecedef",
     borderRadius: "0.65rem",
     fontFamily: "var(--font-inter), sans-serif",
     fontSize: "0.84rem",
     color: "#1c2623",
     padding: "0.6rem 0.7rem",
+    transition: "outline-color 140ms ease",
+  },
+  selectFocused: {
+    outline: "2px solid rgba(0, 81, 63, 0.4)",
   },
   errorBox: {
-    background: "#ffe3e0",
-    color: "#a3362a",
+    background: "#ffdad6",
+    color: "#ba1a1a",
     borderRadius: "0.75rem",
     padding: "0.75rem 1rem",
     marginBottom: "1rem",

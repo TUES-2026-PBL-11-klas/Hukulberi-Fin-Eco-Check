@@ -1,7 +1,17 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CreateReportDto } from './dto/create-report.dto';
+import { DispatcherQueueQueryDto } from './dto/dispatcher-queue-query.dto';
 import { ReportsService } from './reports.service';
 
 @ApiTags('reports')
@@ -19,5 +29,34 @@ export class ReportsController {
   @Get('my')
   findMy(@Req() req: { user: { id: string } }) {
     return this.reportsService.findAllByUser(req.user.id);
+  }
+
+  @Get('dispatcher/queue')
+  @ApiQuery({
+    name: 'category',
+    required: false,
+    enum: [
+      'WASTE',
+      'GREENERY',
+      'ROAD_INFRASTRUCTURE',
+      'ILLEGAL_PARKING',
+      'WATER_SEWER',
+      'OTHER',
+    ],
+  })
+  @ApiQuery({
+    name: 'urgency',
+    required: false,
+    enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
+  })
+  findDispatcherQueue(
+    @Req() req: { user: { role: string } },
+    @Query() query: DispatcherQueueQueryDto,
+  ) {
+    if (!['DISPATCHER', 'ADMIN'].includes(req.user.role)) {
+      throw new ForbiddenException('Dispatcher access required');
+    }
+
+    return this.reportsService.findDispatcherQueue(query);
   }
 }

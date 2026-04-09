@@ -19,6 +19,7 @@ export default function Home() {
   if (!user) return null;
 
   const firstName = user.displayName?.split(" ")[0] || user.email;
+  const canAccessDispatcher = user.role === "DISPATCHER" || user.role === "ADMIN";
 
   return (
     <div style={styles.wrapper}>
@@ -104,22 +105,48 @@ export default function Home() {
             </p>
           </div>
 
-          <div style={{ ...styles.actionCard, cursor: "default" }}>
-            <div style={styles.actionIcon}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
-                  fill="#bec9c3"
-                />
-              </svg>
+          {canAccessDispatcher ? (
+            <div
+              style={styles.actionCard}
+              onClick={() => router.push("/dispatcher")}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = "#f3f4f5")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = "#ffffff")
+              }
+            >
+              <div style={styles.actionIcon}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M3 5.75A1.75 1.75 0 0 1 4.75 4h14.5A1.75 1.75 0 0 1 21 5.75v12.5A1.75 1.75 0 0 1 19.25 20H4.75A1.75 1.75 0 0 1 3 18.25V5.75Zm3 1.25a.75.75 0 0 0-.75.75v1.5c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-1.5a.75.75 0 0 0-.75-.75H6Zm0 5a.75.75 0 0 0-.75.75v3.5c0 .414.336.75.75.75h12a.75.75 0 0 0 .75-.75v-3.5a.75.75 0 0 0-.75-.75H6Zm7.5-4.25a.75.75 0 0 1 .75-.75H18a.75.75 0 0 1 0 1.5h-3.75a.75.75 0 0 1-.75-.75Z"
+                    fill="#00513f"
+                  />
+                </svg>
+              </div>
+              <h3 style={styles.actionTitle}>Dispatcher Queue</h3>
+              <p style={styles.actionDesc}>
+                Filter and sort all incoming reports by AI urgency and category.
+              </p>
             </div>
-            <h3 style={{ ...styles.actionTitle, color: "#bec9c3" }}>
-              Community
-            </h3>
-            <p style={styles.actionDesc}>
-              See what your neighbors are reporting. Coming soon.
-            </p>
-          </div>
+          ) : (
+            <div style={{ ...styles.actionCard, cursor: "default" }}>
+              <div style={styles.actionIcon}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                    fill="#bec9c3"
+                  />
+                </svg>
+              </div>
+              <h3 style={{ ...styles.actionTitle, color: "#bec9c3" }}>
+                Community
+              </h3>
+              <p style={styles.actionDesc}>
+                See what your neighbors are reporting. Coming soon.
+              </p>
+            </div>
+          )}
         </div>
       </main>
     </div>

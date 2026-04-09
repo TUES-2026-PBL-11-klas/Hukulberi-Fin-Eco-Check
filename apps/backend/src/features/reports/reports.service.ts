@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AiTriageService } from './ai-triage.service';
 import { CreateReportDto } from './dto/create-report.dto';
+import { DispatcherQueueQueryDto } from './dto/dispatcher-queue-query.dto';
 
 type TriageStatus = 'PENDING' | 'TRIAGED' | 'FAILED';
 type AiCategory =
@@ -40,6 +41,20 @@ type ReportListItem = {
   aiConfidence: number | null;
   aiReasoning: string | null;
   createdAt: Date;
+};
+
+type DispatcherQueueItem = {
+  id: string;
+  title: string;
+  location: string;
+  status: string;
+  triageStatus: TriageStatus;
+  aiCategory: AiCategory | null;
+  aiUrgency: AiUrgency | null;
+  aiConfidence: number | null;
+  assignedUnit: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 type ReportModelDelegate = {
@@ -83,6 +98,26 @@ type ReportModelDelegate = {
       createdAt: true;
     };
   }): Promise<ReportListItem[]>;
+  findMany(args: {
+    where: {
+      aiCategory?: AiCategory;
+      aiUrgency?: AiUrgency;
+    };
+    orderBy: { createdAt: 'desc' };
+    select: {
+      id: true;
+      title: true;
+      location: true;
+      status: true;
+      triageStatus: true;
+      aiCategory: true;
+      aiUrgency: true;
+      aiConfidence: true;
+      assignedUnit: true;
+      createdAt: true;
+      updatedAt: true;
+    };
+  }): Promise<DispatcherQueueItem[]>;
   update(args: {
     where: { id: string };
     data: {
@@ -168,6 +203,39 @@ export class ReportsService {
         aiConfidence: true,
         aiReasoning: true,
         createdAt: true,
+      },
+    });
+  }
+
+  findDispatcherQueue(query: DispatcherQueueQueryDto) {
+    const where: {
+      aiCategory?: AiCategory;
+      aiUrgency?: AiUrgency;
+    } = {};
+
+    if (query.category) {
+      where.aiCategory = query.category;
+    }
+
+    if (query.urgency) {
+      where.aiUrgency = query.urgency;
+    }
+
+    return this.reportModel.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        location: true,
+        status: true,
+        triageStatus: true,
+        aiCategory: true,
+        aiUrgency: true,
+        aiConfidence: true,
+        assignedUnit: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
   }

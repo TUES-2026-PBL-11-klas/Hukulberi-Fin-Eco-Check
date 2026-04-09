@@ -10,7 +10,7 @@ resources:
 - frontend-service.yaml
 - ingress.yaml
 images:
-- newTag: d635141
+- newTag: 36277c9
 - name: docker.io/darkata/ecocheck-backend
   newTag: latest
 - name: docker.io/darkata/ecocheck-frontend

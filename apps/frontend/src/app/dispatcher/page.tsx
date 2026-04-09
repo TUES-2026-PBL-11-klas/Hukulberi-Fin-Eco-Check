@@ -77,8 +77,7 @@ export default function DispatcherPage() {
       return;
     }
 
-    const canViewDispatcher =
-      user?.role === "DISPATCHER" || user?.role === "ADMIN";
+    const canViewDispatcher = hasDispatcherAccess(user?.role);
 
     if (!canViewDispatcher) {
       setQueue([]);
@@ -168,7 +167,7 @@ export default function DispatcherPage() {
     return null;
   }
 
-  const canViewDispatcher = user.role === "DISPATCHER" || user.role === "ADMIN";
+  const canViewDispatcher = hasDispatcherAccess(user.role);
 
   if (!canViewDispatcher) {
     return (
@@ -378,6 +377,11 @@ function urgencyBadge(urgency: AiUrgency): React.CSSProperties {
   };
 
   return { ...styles.badgeBase, ...map[urgency] };
+}
+
+function hasDispatcherAccess(role?: string | null): boolean {
+  const normalizedRole = (role ?? "").trim().toUpperCase();
+  return normalizedRole === "DISPATCHER" || normalizedRole === "ADMIN";
 }
 
 function selectStyle(isFocused: boolean): React.CSSProperties {

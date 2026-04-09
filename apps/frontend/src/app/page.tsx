@@ -19,7 +19,7 @@ export default function Home() {
   if (!user) return null;
 
   const firstName = user.displayName?.split(" ")[0] || user.email;
-  const canAccessDispatcher = user.role === "DISPATCHER" || user.role === "ADMIN";
+  const canAccessDispatcher = hasDispatcherAccess(user.role);
 
   return (
     <div style={styles.wrapper}>
@@ -151,6 +151,11 @@ export default function Home() {
       </main>
     </div>
   );
+}
+
+function hasDispatcherAccess(role?: string | null): boolean {
+  const normalizedRole = (role ?? "").trim().toUpperCase();
+  return normalizedRole === "DISPATCHER" || normalizedRole === "ADMIN";
 }
 
 const styles: Record<string, React.CSSProperties> = {

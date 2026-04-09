@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AiTriageService } from './ai-triage.service';
 import { CreateReportDto } from './dto/create-report.dto';
@@ -205,6 +205,17 @@ export class ReportsService {
         createdAt: true,
       },
     });
+  }
+
+  async ensureDispatcherAccess(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (!user || !['DISPATCHER', 'ADMIN'].includes(user.role)) {
+      throw new ForbiddenException('Dispatcher access required');
+    }
   }
 
   findDispatcherQueue(query: DispatcherQueueQueryDto) {

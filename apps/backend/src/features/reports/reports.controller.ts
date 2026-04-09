@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Post,
   Query,
@@ -49,14 +48,11 @@ export class ReportsController {
     required: false,
     enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
   })
-  findDispatcherQueue(
-    @Req() req: { user: { role: string } },
+  async findDispatcherQueue(
+    @Req() req: { user: { id: string } },
     @Query() query: DispatcherQueueQueryDto,
   ) {
-    if (!['DISPATCHER', 'ADMIN'].includes(req.user.role)) {
-      throw new ForbiddenException('Dispatcher access required');
-    }
-
+    await this.reportsService.ensureDispatcherAccess(req.user.id);
     return this.reportsService.findDispatcherQueue(query);
   }
 }

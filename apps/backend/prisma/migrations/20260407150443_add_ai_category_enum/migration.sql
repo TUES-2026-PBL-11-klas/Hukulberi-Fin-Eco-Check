@@ -1,0 +1,4 @@
+CREATE TYPE "AiCategory" AS ENUM ('WASTE', 'GREENERY', 'ROAD_INFRASTRUCTURE', 'ILLEGAL_PARKING', 'WATER_SEWER', 'OTHER');
+
+ALTER TABLE "reports" DROP COLUMN "aiCategory",
+ADD COLUMN     "aiCategory" "AiCategory";

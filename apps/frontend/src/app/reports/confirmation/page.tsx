@@ -104,6 +104,12 @@ function ConfirmationContent() {
             Submit Another
           </button>
           <button
+            onClick={() => router.push("/reports")}
+            style={styles.secondaryBtn}
+          >
+            View My Reports
+          </button>
+          <button
             onClick={() => router.push("/")}
             style={styles.primaryBtn}
             onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}

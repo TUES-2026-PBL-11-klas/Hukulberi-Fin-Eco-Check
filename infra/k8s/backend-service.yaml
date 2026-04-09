@@ -3,6 +3,10 @@ kind: Service
 metadata:
   name: backend
   namespace: ecocheck
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "3000"
 spec:
   selector:
     app: backend

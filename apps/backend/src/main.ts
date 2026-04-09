@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { collectDefaultMetrics, register } from 'prom-client';
+import type { Request, Response } from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -20,6 +22,12 @@ async function bootstrap() {
     origin: process.env.CORS_ORIGIN ?? '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
+  });
+
+  collectDefaultMetrics({ prefix: 'ecocheck_backend_' });
+  app.use('/metrics', async (_req: Request, res: Response) => {
+    res.setHeader('Content-Type', register.contentType);
+    res.end(await register.metrics());
   });
 
   // Swagger API documentation

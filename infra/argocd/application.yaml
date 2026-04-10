@@ -8,7 +8,7 @@ spec:
 
   source:
     repoURL: https://github.com/TUES-2026-PBL-11-klas/Hukulberi-Fin-Eco-Check.git
-    targetRevision: main
+    targetRevision: dev
     path: infra/k8s
 
   destination:

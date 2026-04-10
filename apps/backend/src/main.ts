@@ -5,6 +5,20 @@ import { collectDefaultMetrics, register } from 'prom-client';
 import type { Request, Response } from 'express';
 import { AppModule } from './app.module';
 
+type MetricsRegistry = {
+  contentType: string;
+  metrics: () => Promise<string>;
+};
+
+type CollectDefaultMetrics = (config?: { prefix?: string }) => void;
+
+type ExpressLike = {
+  get: (
+    path: string,
+    handler: (req: Request, res: Response) => void | Promise<void>,
+  ) => void;
+};
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -24,10 +38,18 @@ async function bootstrap() {
     credentials: true,
   });
 
-  collectDefaultMetrics({ prefix: 'ecocheck_backend_' });
-  app.use('/metrics', async (_req: Request, res: Response) => {
-    res.setHeader('Content-Type', register.contentType);
-    res.end(await register.metrics());
+  const setupDefaultMetrics =
+    collectDefaultMetrics as unknown as CollectDefaultMetrics;
+  setupDefaultMetrics({ prefix: 'ecocheck_backend_' });
+
+  const metricsRegistry: MetricsRegistry =
+    register as unknown as MetricsRegistry;
+  const expressApp = app
+    .getHttpAdapter()
+    .getInstance() as unknown as ExpressLike;
+  expressApp.get('/metrics', async (_req: Request, res: Response) => {
+    res.setHeader('Content-Type', metricsRegistry.contentType);
+    res.end(await metricsRegistry.metrics());
   });
 
   // Swagger API documentation

@@ -26,3 +26,13 @@ spec:
                 name: backend
                 port:
                   number: 3000
+    - host: grafana.ecocheck.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000

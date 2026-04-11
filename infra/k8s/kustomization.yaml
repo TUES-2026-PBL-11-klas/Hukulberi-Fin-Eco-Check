@@ -12,6 +12,8 @@ resources:
 - prometheus-deployment.yaml
 - prometheus-service.yaml
 - grafana-datasource.yaml
+- grafana-dashboard-provider.yaml
+- grafana-dashboard-ecocheck.yaml
 - grafana-deployment.yaml
 - grafana-service.yaml
 - ingress.yaml

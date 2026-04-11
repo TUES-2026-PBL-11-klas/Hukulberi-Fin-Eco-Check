@@ -17,6 +17,9 @@ spec:
         - name: backend
           image: docker.io/darkata/ecocheck-backend:latest
           imagePullPolicy: IfNotPresent
+          command:
+            - node
+            - apps/backend/dist/src/main.js
           ports:
             - containerPort: 3000
           envFrom:

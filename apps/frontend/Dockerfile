@@ -10,8 +10,8 @@ RUN npm run build -w apps/frontend
 FROM node:20-alpine
 WORKDIR /workspace
 ENV NODE_ENV=production
-COPY --from=builder /workspace/apps/frontend/public ./public
+COPY --from=builder /workspace/apps/frontend/public ./apps/frontend/public
 COPY --from=builder /workspace/apps/frontend/.next/standalone ./
-COPY --from=builder /workspace/apps/frontend/.next/static ./.next/static
+COPY --from=builder /workspace/apps/frontend/.next/static ./apps/frontend/.next/static
 EXPOSE 3000
-CMD ["node","server.js"]
+CMD ["node","apps/frontend/server.js"]

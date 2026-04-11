@@ -18,8 +18,17 @@ spec:
           image: docker.io/darkata/ecocheck-frontend:latest
           imagePullPolicy: IfNotPresent
           command:
-            - node
-            - apps/frontend/server.js
+            - sh
+            - -c
+            - |
+              if [ -d /workspace/.next/static ]; then
+                mkdir -p /workspace/apps/frontend/.next
+                ln -sfn /workspace/.next/static /workspace/apps/frontend/.next/static
+              fi
+              if [ -d /workspace/public ]; then
+                ln -sfn /workspace/public /workspace/apps/frontend/public
+              fi
+              exec node apps/frontend/server.js
           ports:
             - containerPort: 3000
           env:

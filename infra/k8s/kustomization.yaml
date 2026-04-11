@@ -8,6 +8,12 @@ resources:
 - backend-service.yaml
 - frontend-deployment.yaml
 - frontend-service.yaml
+- prometheus-config.yaml
+- prometheus-deployment.yaml
+- prometheus-service.yaml
+- grafana-datasource.yaml
+- grafana-deployment.yaml
+- grafana-service.yaml
 - ingress.yaml
 images:
 - newTag: 4832cfe

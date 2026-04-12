@@ -23,4 +23,4 @@ RUN cd apps/backend && npx prisma generate --schema prisma/schema.prisma
 COPY --from=builder /workspace/apps/backend/dist ./apps/backend/dist
 
 EXPOSE 3000
-CMD ["node","apps/backend/dist/main.js"]
+CMD ["node","apps/backend/dist/src/main.js"]

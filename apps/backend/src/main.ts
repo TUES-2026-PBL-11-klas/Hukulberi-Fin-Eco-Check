@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { collectDefaultMetrics, register } from 'prom-client';
-import type { Request, Response } from 'express';
+import { json, type Request, type Response, urlencoded } from 'express';
 import { AppModule } from './app.module';
 
 type MetricsRegistry = {
@@ -20,7 +20,10 @@ type ExpressLike = {
 };
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+
+  app.use(json({ limit: '8mb' }));
+  app.use(urlencoded({ extended: true, limit: '8mb' }));
 
   // Global validation pipe
   app.useGlobalPipes(

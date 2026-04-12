@@ -2,12 +2,14 @@
 
 import { useAuth } from "@/lib/useAuth";
 import { fetchWithAuth } from "@/lib/api";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function NewReportPage() {
   const { loading } = useAuth();
   const router = useRouter();
+  const maxPhotoSizeBytes = 5 * 1024 * 1024;
 
   const [form, setForm] = useState({
     title: "",
@@ -15,6 +17,7 @@ export default function NewReportPage() {
     location: "",
     photoUrl: "",
   });
+  const [photoName, setPhotoName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -30,6 +33,55 @@ export default function NewReportPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }
+
+  function clearPhotoSelection() {
+    setPhotoName("");
+    setForm((prev) => ({ ...prev, photoUrl: "" }));
+  }
+
+  function handlePhotoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+
+    if (!file) {
+      clearPhotoSelection();
+      return;
+    }
+
+    setError("");
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please select an image file.");
+      e.currentTarget.value = "";
+      return;
+    }
+
+    if (file.size > maxPhotoSizeBytes) {
+      setError("Photo must be 5 MB or smaller.");
+      e.currentTarget.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : "";
+
+      if (!dataUrl) {
+        setError("Could not read the selected photo.");
+        return;
+      }
+
+      setForm((prev) => ({ ...prev, photoUrl: dataUrl }));
+      setPhotoName(file.name);
+    };
+
+    reader.onerror = () => {
+      setError("Could not read the selected photo.");
+      e.currentTarget.value = "";
+    };
+
+    reader.readAsDataURL(file);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -161,29 +213,47 @@ export default function NewReportPage() {
             />
           </div>
 
-          {/* Photo URL (optional) */}
+          {/* Photo attachment (optional) */}
           <div style={styles.fieldGroup}>
-            <label style={styles.label} htmlFor="photoUrl">
-              Photo URL{" "}
+            <label style={styles.label} htmlFor="photoFile">
+              Attach Photo{" "}
               <span style={styles.optionalTag}>optional</span>
             </label>
             <input
-              id="photoUrl"
-              name="photoUrl"
-              type="url"
-              placeholder="https://..."
-              value={form.photoUrl}
-              onChange={handleChange}
-              style={styles.input}
-              onFocus={(e) =>
-                (e.currentTarget.style.outline =
-                  "2px solid rgba(0,81,63,0.4)")
-              }
-              onBlur={(e) => (e.currentTarget.style.outline = "none")}
+              id="photoFile"
+              name="photoFile"
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoFileChange}
+              style={styles.fileInput}
             />
             <p style={styles.fieldHint}>
-              Upload your photo somewhere (e.g. Imgur) and paste the link here.
+              Choose an image from your computer (max 5 MB).
             </p>
+
+            {photoName ? (
+              <p style={styles.fileMeta}>Selected file: {photoName}</p>
+            ) : null}
+
+            {form.photoUrl ? (
+              <div style={styles.photoPreviewCard}>
+                <Image
+                  src={form.photoUrl}
+                  alt="Selected report attachment preview"
+                  width={1200}
+                  height={800}
+                  unoptimized
+                  style={styles.photoPreviewImage}
+                />
+                <button
+                  type="button"
+                  onClick={clearPhotoSelection}
+                  style={styles.removePhotoBtn}
+                >
+                  Remove photo
+                </button>
+              </div>
+            ) : null}
           </div>
 
           {error && (
@@ -358,6 +428,49 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "0.78rem",
     color: "#bec9c3",
     lineHeight: 1.5,
+  },
+  fileInput: {
+    fontFamily: "var(--font-inter), sans-serif",
+    fontSize: "0.9rem",
+    color: "#191c1b",
+    background: "#f3f4f5",
+    border: "none",
+    borderRadius: "0.75rem",
+    padding: "0.75rem 1rem",
+    width: "100%",
+    boxSizing: "border-box" as const,
+  },
+  fileMeta: {
+    fontFamily: "var(--font-inter), sans-serif",
+    fontSize: "0.78rem",
+    color: "#404943",
+  },
+  photoPreviewCard: {
+    background: "#f8f9fa",
+    borderRadius: "0.75rem",
+    padding: "0.75rem",
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: "0.75rem",
+  },
+  photoPreviewImage: {
+    width: "100%",
+    maxHeight: "280px",
+    objectFit: "cover" as const,
+    borderRadius: "0.5rem",
+    background: "#ecedef",
+  },
+  removePhotoBtn: {
+    alignSelf: "flex-start",
+    fontFamily: "var(--font-manrope), sans-serif",
+    fontSize: "0.8rem",
+    fontWeight: 600,
+    color: "#404943",
+    background: "#ffffff",
+    border: "1px solid #dbe5df",
+    borderRadius: "0.6rem",
+    padding: "0.45rem 0.8rem",
+    cursor: "pointer",
   },
   errorBox: {
     background: "#fff0f0",

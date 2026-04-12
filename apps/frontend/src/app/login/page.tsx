@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { setToken, fetchWithAuth } from "@/lib/api";
 
@@ -9,6 +9,18 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 900px)");
+
+    const syncViewport = () => setIsMobile(mediaQuery.matches);
+
+    syncViewport();
+    mediaQuery.addEventListener("change", syncViewport);
+
+    return () => mediaQuery.removeEventListener("change", syncViewport);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,11 +49,31 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={styles.wrapper}>
+    <div
+      style={{
+        ...styles.wrapper,
+        ...(isMobile ? styles.wrapperMobile : null),
+      }}
+    >
       {/* Left — Branding panel */}
-      <div style={styles.brandPanel}>
-        <div style={styles.brandContent}>
-          <div style={styles.logoMark}>
+      <div
+        style={{
+          ...styles.brandPanel,
+          ...(isMobile ? styles.brandPanelMobile : null),
+        }}
+      >
+        <div
+          style={{
+            ...styles.brandContent,
+            ...(isMobile ? styles.brandContentMobile : null),
+          }}
+        >
+          <div
+            style={{
+              ...styles.logoMark,
+              ...(isMobile ? styles.logoMarkMobile : null),
+            }}
+          >
             <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
               <circle cx="20" cy="20" r="20" fill="rgba(255,255,255,0.15)" />
               <path
@@ -50,24 +82,63 @@ export default function LoginPage() {
               />
             </svg>
           </div>
-          <h1 style={styles.brandTitle}>EcoCheck</h1>
-          <p style={styles.brandSubtitle}>
+          <h1
+            style={{
+              ...styles.brandTitle,
+              ...(isMobile ? styles.brandTitleMobile : null),
+            }}
+          >
+            EcoCheck
+          </h1>
+          <p
+            style={{
+              ...styles.brandSubtitle,
+              ...(isMobile ? styles.brandSubtitleMobile : null),
+            }}
+          >
             Report and track environmental issues in your city. Together we
             build a cleaner, greener future.
           </p>
         </div>
 
-        <p style={styles.brandFooter}>
+        <p
+          style={{
+            ...styles.brandFooter,
+            ...(isMobile ? styles.brandFooterMobile : null),
+          }}
+        >
           &copy; {new Date().getFullYear()} EcoCheck &middot; All rights
           reserved
         </p>
       </div>
 
       {/* Right — Login form */}
-      <div style={styles.formPanel}>
-        <div style={styles.formContainer}>
-          <div style={styles.formHeader}>
-            <h2 style={styles.formTitle}>Welcome back</h2>
+      <div
+        style={{
+          ...styles.formPanel,
+          ...(isMobile ? styles.formPanelMobile : null),
+        }}
+      >
+        <div
+          style={{
+            ...styles.formContainer,
+            ...(isMobile ? styles.formContainerMobile : null),
+          }}
+        >
+          <div
+            style={{
+              ...styles.formHeader,
+              ...(isMobile ? styles.formHeaderMobile : null),
+            }}
+          >
+            <h2
+              style={{
+                ...styles.formTitle,
+                ...(isMobile ? styles.formTitleMobile : null),
+              }}
+            >
+              Welcome back
+            </h2>
             <p style={styles.formSubtitle}>
               Sign in to continue to your dashboard
             </p>
@@ -94,7 +165,12 @@ export default function LoginPage() {
             </div>
 
             <div style={styles.field}>
-              <div style={styles.labelRow}>
+              <div
+                style={{
+                  ...styles.labelRow,
+                  ...(isMobile ? styles.labelRowMobile : null),
+                }}
+              >
                 <label style={styles.label}>Password</label>
                 <a href="#" style={styles.forgotLink}>
                   Forgot password?
@@ -120,6 +196,7 @@ export default function LoginPage() {
               disabled={loading}
               style={{
                 ...styles.submitBtn,
+                ...(isMobile ? styles.submitBtnMobile : null),
                 opacity: loading ? 0.7 : 1,
                 cursor: loading ? "not-allowed" : "pointer",
               }}
@@ -147,6 +224,10 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     minHeight: "100vh",
   },
+  wrapperMobile: {
+    flexDirection: "column" as const,
+    minHeight: "100dvh",
+  },
 
   /* Brand panel (left) */
   brandPanel: {
@@ -158,12 +239,23 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     padding: "3.5rem",
   },
+  brandPanelMobile: {
+    flex: "0 0 auto",
+    padding: "2rem 1.25rem 1.5rem",
+  },
   brandContent: {
     marginTop: "auto",
     marginBottom: "auto",
   },
+  brandContentMobile: {
+    marginTop: 0,
+    marginBottom: 0,
+  },
   logoMark: {
     marginBottom: "2rem",
+  },
+  logoMarkMobile: {
+    marginBottom: "1rem",
   },
   brandTitle: {
     fontFamily: "var(--font-manrope), sans-serif",
@@ -173,6 +265,10 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.1,
     marginBottom: "1rem",
   },
+  brandTitleMobile: {
+    fontSize: "2rem",
+    marginBottom: "0.75rem",
+  },
   brandSubtitle: {
     fontFamily: "var(--font-inter), sans-serif",
     fontSize: "1.05rem",
@@ -180,10 +276,19 @@ const styles: Record<string, React.CSSProperties> = {
     opacity: 0.8,
     maxWidth: "28rem",
   },
+  brandSubtitleMobile: {
+    fontSize: "0.95rem",
+    maxWidth: "none",
+  },
   brandFooter: {
     fontFamily: "var(--font-inter), sans-serif",
     fontSize: "0.8rem",
     opacity: 0.5,
+  },
+  brandFooterMobile: {
+    fontSize: "0.75rem",
+    marginTop: "1rem",
+    opacity: 0.7,
   },
 
   /* Form panel (right) */
@@ -195,12 +300,22 @@ const styles: Record<string, React.CSSProperties> = {
     background: "#f8f9fa", // surface
     padding: "2rem",
   },
+  formPanelMobile: {
+    alignItems: "stretch",
+    padding: "1.25rem 1rem 2rem",
+  },
   formContainer: {
     width: "100%",
     maxWidth: "400px",
   },
+  formContainerMobile: {
+    maxWidth: "none",
+  },
   formHeader: {
     marginBottom: "2.5rem",
+  },
+  formHeaderMobile: {
+    marginBottom: "1.5rem",
   },
   formTitle: {
     fontFamily: "var(--font-manrope), sans-serif",
@@ -209,6 +324,9 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: "-0.02em",
     color: "#191c1b", // on-surface
     marginBottom: "0.5rem",
+  },
+  formTitleMobile: {
+    fontSize: "1.5rem",
   },
   formSubtitle: {
     fontFamily: "var(--font-inter), sans-serif",
@@ -231,6 +349,11 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+  labelRowMobile: {
+    flexDirection: "column" as const,
+    alignItems: "flex-start",
+    gap: "0.35rem",
   },
   label: {
     fontFamily: "var(--font-inter), sans-serif",
@@ -275,6 +398,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "0.85rem",
     marginTop: "0.5rem",
     transition: "opacity 0.2s ease",
+  },
+  submitBtnMobile: {
+    width: "100%",
   },
   signupText: {
     fontFamily: "var(--font-inter), sans-serif",

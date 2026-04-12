@@ -1,10 +1,4 @@
-import {
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  IsUrl,
-  MaxLength,
-} from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateReportDto {
   @IsString()
@@ -22,6 +16,7 @@ export class CreateReportDto {
   location!: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsString()
+  @MaxLength(8_000_000)
   photoUrl?: string;
 }

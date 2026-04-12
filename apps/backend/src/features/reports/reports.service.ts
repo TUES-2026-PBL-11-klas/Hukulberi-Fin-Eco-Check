@@ -1,4 +1,9 @@
-import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AiTriageService } from './ai-triage.service';
 import { CreateReportDto } from './dto/create-report.dto';
@@ -160,12 +165,23 @@ export class ReportsService {
   }
 
   async create(userId: string, dto: CreateReportDto) {
+    const normalizedPhotoUrl = dto.photoUrl?.trim();
+
+    if (
+      normalizedPhotoUrl &&
+      !this.isSupportedPhotoPayload(normalizedPhotoUrl)
+    ) {
+      throw new BadRequestException(
+        'Photo must be an image URL or an attached image file.',
+      );
+    }
+
     const report = await this.reportModel.create({
       data: {
         title: dto.title,
         description: dto.description,
         location: dto.location,
-        photoUrl: dto.photoUrl,
+        photoUrl: normalizedPhotoUrl,
         userId,
       },
       select: {
@@ -289,6 +305,14 @@ export class ReportsService {
         select: this.reportDetailSelect,
       });
     }
+  }
+
+  private isSupportedPhotoPayload(photo: string): boolean {
+    if (/^https?:\/\/\S+/i.test(photo)) {
+      return true;
+    }
+
+    return photo.startsWith('data:image/') && photo.includes(';base64,');
   }
 
   private readonly reportDetailSelect = {

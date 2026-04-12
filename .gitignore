@@ -42,3 +42,16 @@ docker-compose.override.yml
 /.parcel-cache/
 
 /generated/prisma
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+*.auto.tfvars

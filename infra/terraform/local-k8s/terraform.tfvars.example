@@ -7,3 +7,14 @@ kubeconfig_path = "~/.kube/config"
 namespace_name = "ecocheck-tf"
 
 enable_demo_configmap = true
+
+# Optional monitoring stack with Prometheus + Grafana via Helm
+enable_monitoring_stack = true
+monitoring_namespace    = "ecocheck-monitoring"
+
+# For local demo only. Use stronger credentials outside local environments.
+grafana_admin_user     = "admin"
+grafana_admin_password = "admin"
+
+# Backend scrape target for Prometheus additionalScrapeConfigs
+backend_metrics_target = "backend.ecocheck.svc.cluster.local:3000"

@@ -31,3 +31,40 @@ variable "common_labels" {
     env        = "local"
   }
 }
+
+variable "enable_monitoring_stack" {
+  type        = bool
+  description = "Install Prometheus and Grafana via kube-prometheus-stack Helm chart"
+  default     = false
+}
+
+variable "monitoring_namespace" {
+  type        = string
+  description = "Namespace where the monitoring stack is installed"
+  default     = "ecocheck-monitoring"
+}
+
+variable "kube_prometheus_stack_chart_version" {
+  type        = string
+  description = "Helm chart version for prometheus-community/kube-prometheus-stack"
+  default     = "62.7.0"
+}
+
+variable "grafana_admin_user" {
+  type        = string
+  description = "Grafana admin username for the Helm-installed stack"
+  default     = "admin"
+}
+
+variable "grafana_admin_password" {
+  type        = string
+  description = "Grafana admin password for the Helm-installed stack"
+  default     = "admin"
+  sensitive   = true
+}
+
+variable "backend_metrics_target" {
+  type        = string
+  description = "Backend target scraped by Prometheus job ecocheck-backend"
+  default     = "backend.ecocheck.svc.cluster.local:3000"
+}

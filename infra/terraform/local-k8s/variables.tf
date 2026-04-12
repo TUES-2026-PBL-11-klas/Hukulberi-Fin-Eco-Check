@@ -68,3 +68,33 @@ variable "backend_metrics_target" {
   description = "Backend target scraped by Prometheus job ecocheck-backend"
   default     = "backend.ecocheck.svc.cluster.local:3000"
 }
+
+variable "enable_argocd" {
+  type        = bool
+  description = "Install ArgoCD via argo-cd Helm chart"
+  default     = false
+}
+
+variable "argocd_namespace" {
+  type        = string
+  description = "Namespace where ArgoCD is installed"
+  default     = "argocd"
+}
+
+variable "argocd_chart_version" {
+  type        = string
+  description = "Optional ArgoCD chart version. Empty string means latest available"
+  default     = ""
+}
+
+variable "argocd_server_service_type" {
+  type        = string
+  description = "Service type for ArgoCD server"
+  default     = "ClusterIP"
+}
+
+variable "argocd_server_insecure" {
+  type        = bool
+  description = "Set ArgoCD server.insecure parameter for easier local HTTP port-forward usage"
+  default     = true
+}

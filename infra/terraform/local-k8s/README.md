@@ -8,6 +8,7 @@ This is a zero-cost Terraform starter for the EcoCheck project.
 - One demo ConfigMap (optional)
 - Optional monitoring stack via Helm (kube-prometheus-stack)
 - Optional provisioned Grafana datasource and dashboard for EcoCheck backend metrics
+- Optional ArgoCD stack via Helm (argo-cd)
 
 ## Prerequisites
 
@@ -89,8 +90,51 @@ Then open http://localhost:3100 and login with your Grafana credentials.
 
 ## Migration note
 
-If you keep monitoring enabled in Terraform, avoid deploying the legacy monitoring manifests from infra/k8s at the same time.
-The current Kustomize file still includes Prometheus and Grafana manifests, so you can end up with duplicate stacks.
+Legacy Prometheus and Grafana resources were removed from Kustomize to avoid duplicate monitoring stacks.
+Keep monitoring lifecycle in Terraform from now on.
+
+## Enable ArgoCD stack
+
+1. In terraform.tfvars set:
+
+```hcl
+enable_argocd              = true
+argocd_namespace           = "argocd"
+argocd_chart_version       = ""
+argocd_server_service_type = "ClusterIP"
+argocd_server_insecure     = true
+```
+
+2. Apply:
+
+```powershell
+terraform plan -out plan.tfplan
+terraform apply plan.tfplan
+```
+
+3. Verify ArgoCD resources:
+
+```powershell
+kubectl -n argocd get pods
+kubectl -n argocd get svc
+```
+
+4. Open ArgoCD UI:
+
+```powershell
+kubectl -n argocd port-forward svc/argocd-server 8085:80
+```
+
+Then open http://localhost:8085.
+
+5. Read initial admin password:
+
+```powershell
+$b64 = kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}'
+[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($b64))
+```
+
+Login user is admin.
 
 ## Cleanup
 
@@ -100,6 +144,6 @@ terraform destroy
 
 ## Next migration steps
 
-- Add Helm releases for ArgoCD and app dependencies
+- Add Terraform-managed ArgoCD Application for EcoCheck repo sync
 - Add modules for app namespace and shared resources
 - Move more resources from infra/k8s manifests into Terraform

@@ -22,3 +22,18 @@ output "prometheus_service_name" {
   description = "Prometheus service name from kube-prometheus-stack when enabled"
   value       = var.enable_monitoring_stack ? "kube-prometheus-stack-prometheus" : null
 }
+
+output "argocd_namespace" {
+  description = "ArgoCD namespace when enabled"
+  value       = var.enable_argocd ? kubernetes_namespace_v1.argocd[0].metadata[0].name : null
+}
+
+output "argocd_server_service_name" {
+  description = "ArgoCD server service name when enabled"
+  value       = var.enable_argocd ? "argocd-server" : null
+}
+
+output "argocd_initial_admin_secret_name" {
+  description = "Initial ArgoCD admin password secret name when enabled"
+  value       = var.enable_argocd ? "argocd-initial-admin-secret" : null
+}

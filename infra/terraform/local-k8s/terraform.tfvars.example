@@ -18,3 +18,10 @@ grafana_admin_password = "admin"
 
 # Backend scrape target for Prometheus additionalScrapeConfigs
 backend_metrics_target = "backend.ecocheck.svc.cluster.local:3000"
+
+# Optional ArgoCD stack via Helm
+enable_argocd             = true
+argocd_namespace          = "argocd"
+argocd_chart_version      = ""
+argocd_server_service_type = "ClusterIP"
+argocd_server_insecure    = true

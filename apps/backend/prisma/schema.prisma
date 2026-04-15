@@ -104,3 +104,16 @@ model FeatureFlag {
 
   @@map("feature_flags")
 }
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String   // e.g. "CONFIG_CREATED", "CONFIG_UPDATED", "CONFIG_DELETED", "FLAG_TOGGLED"
+  entity    String   // e.g. "Config", "FeatureFlag"
+  entityId  String?  // the key/ID of the affected record
+  oldValue  String?  // JSON snapshot of previous state
+  newValue  String?  // JSON snapshot of new state
+  userId    String?  // who performed the action
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}

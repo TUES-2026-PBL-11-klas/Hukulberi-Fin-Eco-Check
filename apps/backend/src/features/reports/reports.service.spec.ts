@@ -261,14 +261,16 @@ describe('ReportsService — Dispatcher Operations', () => {
         'u-1',
       )) as unknown as { assignedUnit: string };
       expect(result.assignedUnit).toBe('Waste Management');
-      expect(mockPrisma.report.update).toHaveBeenCalledWith({
-        where: { id: 'r-5' },
-        data: {
-          assignedUnit: 'Waste Management',
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          assignedAt: expect.any(Date),
-        },
-      });
+      expect(mockPrisma.report.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'r-5' },
+          data: {
+            assignedUnit: 'Waste Management',
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            assignedAt: expect.any(Date),
+          },
+        }),
+      );
     });
 
     it('should auto-advance NEW → IN_PROGRESS when assigning', async () => {

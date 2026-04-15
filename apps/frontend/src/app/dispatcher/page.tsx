@@ -2,8 +2,9 @@
 
 import { fetchWithAuth } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type ReportStatus = "NEW" | "IN_PROGRESS" | "RESOLVED";
 type TriageStatus = "PENDING" | "TRIAGED" | "FAILED";
@@ -48,6 +49,13 @@ const urgencyFilters: Array<"ALL" | AiUrgency> = [
   "CRITICAL",
 ];
 
+const statusTabs: Array<"ALL" | ReportStatus> = [
+  "ALL",
+  "NEW",
+  "IN_PROGRESS",
+  "RESOLVED",
+];
+
 type SortBy = "createdAt" | "urgency";
 type SortDirection = "asc" | "desc";
 
@@ -57,6 +65,15 @@ const urgencyRank: Record<AiUrgency, number> = {
   HIGH: 3,
   CRITICAL: 4,
 };
+
+const UNIT_OPTIONS = [
+  "Waste Management",
+  "Parks & Greenery",
+  "Roads & Infrastructure",
+  "Traffic Enforcement",
+  "Water & Sewage",
+  "General Services",
+];
 
 export default function DispatcherPage() {
   const { user, loading } = useAuth();
@@ -68,86 +85,78 @@ export default function DispatcherPage() {
 
   const [category, setCategory] = useState<"ALL" | AiCategory>("ALL");
   const [urgency, setUrgency] = useState<"ALL" | AiUrgency>("ALL");
+  const [statusTab, setStatusTab] = useState<"ALL" | ReportStatus>("ALL");
   const [sortBy, setSortBy] = useState<SortBy>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (loading) {
-      return;
+  // Track which cards have open assign dropdowns
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const loadQueue = useCallback(async () => {
+    setIsLoadingQueue(true);
+    setError("");
+
+    try {
+      const params = new URLSearchParams();
+      if (category !== "ALL") params.set("category", category);
+      if (urgency !== "ALL") params.set("urgency", urgency);
+      if (statusTab !== "ALL") params.set("status", statusTab);
+
+      const query = params.toString();
+      const path = query ? `/reports/dispatcher/queue?${query}` : "/reports/dispatcher/queue";
+
+      const res = await fetchWithAuth(path);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.message ?? "Failed to load dispatcher queue.");
+      }
+
+      const data = (await res.json()) as QueueRow[];
+      setQueue(data);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to load dispatcher queue.";
+      setError(message);
+    } finally {
+      setIsLoadingQueue(false);
     }
+  }, [category, urgency, statusTab]);
 
+  useEffect(() => {
+    if (loading) return;
     const canViewDispatcher = hasDispatcherAccess(user?.role);
-
     if (!canViewDispatcher) {
       setQueue([]);
       setError("");
       setIsLoadingQueue(false);
       return;
     }
-
-    let active = true;
-
-    async function loadQueue() {
-      setIsLoadingQueue(true);
-      setError("");
-
-      try {
-        const params = new URLSearchParams();
-        if (category !== "ALL") params.set("category", category);
-        if (urgency !== "ALL") params.set("urgency", urgency);
-
-        const query = params.toString();
-        const path = query ? `/reports/dispatcher/queue?${query}` : "/reports/dispatcher/queue";
-
-        const res = await fetchWithAuth(path);
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data?.message ?? "Failed to load dispatcher queue.");
-        }
-
-        const data = (await res.json()) as QueueRow[];
-        if (active) setQueue(data);
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "Failed to load dispatcher queue.";
-        if (active) setError(message);
-      } finally {
-        if (active) setIsLoadingQueue(false);
-      }
-    }
-
     void loadQueue();
-    return () => {
-      active = false;
-    };
-  }, [category, urgency, loading, user?.role]);
+  }, [category, urgency, statusTab, loading, user?.role, loadQueue]);
 
   const sortedQueue = useMemo(() => {
     const rows = [...queue];
-
     rows.sort((a, b) => {
       let comparison = 0;
-
       if (sortBy === "createdAt") {
         comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       } else {
         const aRank = a.aiUrgency ? urgencyRank[a.aiUrgency] : 0;
         const bRank = b.aiUrgency ? urgencyRank[b.aiUrgency] : 0;
         comparison = aRank - bRank;
-
         if (comparison === 0) {
           comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         }
       }
-
       return sortDirection === "asc" ? comparison : comparison * -1;
     });
-
     return rows;
   }, [queue, sortBy, sortDirection]);
 
   const statusCounts = useMemo(
     () => ({
+      ALL: queue.length,
       NEW: queue.filter((item) => item.status === "NEW").length,
       IN_PROGRESS: queue.filter((item) => item.status === "IN_PROGRESS").length,
       RESOLVED: queue.filter((item) => item.status === "RESOLVED").length,
@@ -155,17 +164,60 @@ export default function DispatcherPage() {
     [queue],
   );
 
+  // --- Action handlers ---
+
+  async function handleStatusUpdate(reportId: string, newStatus: ReportStatus) {
+    setActionLoading(reportId);
+    try {
+      const res = await fetchWithAuth(`/reports/${reportId}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.message ?? "Failed to update status.");
+      }
+      await loadQueue();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Action failed.";
+      setError(message);
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleAssignUnit(reportId: string, unit: string) {
+    setActionLoading(reportId);
+    setAssigningId(null);
+    try {
+      const res = await fetchWithAuth(`/reports/${reportId}/assign`, {
+        method: "PATCH",
+        body: JSON.stringify({ unit }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.message ?? "Failed to assign unit.");
+      }
+      await loadQueue();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Action failed.";
+      setError(message);
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   if (loading || isLoadingQueue) {
     return (
       <div style={styles.loadingWrapper}>
-        <div style={styles.loadingPulse} />
+        <div style={styles.loadingSpinner}>
+          <div style={styles.spinnerRing} />
+        </div>
       </div>
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   const canViewDispatcher = hasDispatcherAccess(user.role);
 
@@ -194,31 +246,36 @@ export default function DispatcherPage() {
           <button onClick={() => router.push("/")} style={styles.backBtn}>
             ← Dashboard
           </button>
+          <Link href="/dispatcher/analytics" style={styles.analyticsLink}>
+            📊 Analytics
+          </Link>
         </div>
 
         <div style={styles.heroSection}>
           <span style={styles.badge}>Dispatcher</span>
           <h1 style={styles.heroTitle}>Operations Queue</h1>
           <p style={styles.heroSubtitle}>
-            Filter by AI category and urgency, then sort queue items by urgency or submission date.
+            Manage reports: update statuses, assign municipal units, and filter by category, urgency, or status.
           </p>
         </div>
 
-        <div style={styles.statsRow}>
-          <div style={styles.statCard}>
-            <span style={styles.statLabel}>New</span>
-            <span style={styles.statValue}>{statusCounts.NEW}</span>
-          </div>
-          <div style={styles.statCard}>
-            <span style={styles.statLabel}>In Progress</span>
-            <span style={styles.statValue}>{statusCounts.IN_PROGRESS}</span>
-          </div>
-          <div style={styles.statCard}>
-            <span style={styles.statLabel}>Resolved</span>
-            <span style={styles.statValue}>{statusCounts.RESOLVED}</span>
-          </div>
+        {/* Status tabs */}
+        <div style={styles.tabsRow}>
+          {statusTabs.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setStatusTab(tab)}
+              style={statusTab === tab ? styles.tabActive : styles.tab}
+            >
+              {tab === "ALL" ? "All" : tab.replace("_", " ")}
+              <span style={styles.tabCount}>
+                {statusCounts[tab] ?? 0}
+              </span>
+            </button>
+          ))}
         </div>
 
+        {/* Filter controls */}
         <div style={styles.controlsShell}>
           <div style={styles.controlsGrid}>
             <label style={styles.controlBlock}>
@@ -294,49 +351,115 @@ export default function DispatcherPage() {
           </div>
         ) : (
           <div style={styles.list}>
-            {sortedQueue.map((report) => (
-              <article key={report.id} style={styles.card}>
-                <div style={styles.cardTop}>
-                  <div>
-                    <h2 style={styles.cardTitle}>{report.title}</h2>
-                    <p style={styles.cardMeta}>{report.location}</p>
+            {sortedQueue.map((report) => {
+              const isActioning = actionLoading === report.id;
+              const isAssigning = assigningId === report.id;
+
+              return (
+                <article key={report.id} style={styles.card}>
+                  <div style={styles.cardTop}>
+                    <div>
+                      <h2 style={styles.cardTitle}>{report.title}</h2>
+                      <p style={styles.cardMeta}>{report.location}</p>
+                    </div>
+
+                    <div style={styles.badgeRow}>
+                      <span style={statusBadge(report.status)}>{report.status.replace("_", " ")}</span>
+                      <span style={triageBadge(report.triageStatus)}>{report.triageStatus}</span>
+                      {report.aiUrgency ? <span style={urgencyBadgeStyle(report.aiUrgency)}>{report.aiUrgency}</span> : null}
+                    </div>
                   </div>
 
-                  <div style={styles.badgeRow}>
-                    <span style={statusBadge(report.status)}>{report.status.replace("_", " ")}</span>
-                    <span style={triageBadge(report.triageStatus)}>{report.triageStatus}</span>
-                    {report.aiUrgency ? <span style={urgencyBadge(report.aiUrgency)}>{report.aiUrgency}</span> : null}
-                  </div>
-                </div>
+                  <div style={styles.metaGrid}>
+                    <div style={styles.metaItem}>
+                      <span style={styles.metaLabel}>Category</span>
+                      <span style={styles.metaValue}>
+                        {report.aiCategory ? formatLabel(report.aiCategory) : "Pending"}
+                      </span>
+                    </div>
 
-                <div style={styles.metaGrid}>
-                  <div style={styles.metaItem}>
-                    <span style={styles.metaLabel}>Category</span>
-                    <span style={styles.metaValue}>
-                      {report.aiCategory ? formatLabel(report.aiCategory) : "Pending"}
-                    </span>
+                    <div style={styles.metaItem}>
+                      <span style={styles.metaLabel}>Confidence</span>
+                      <span style={styles.metaValue}>{formatConfidence(report.aiConfidence)}</span>
+                    </div>
+
+                    <div style={styles.metaItem}>
+                      <span style={styles.metaLabel}>Assigned Unit</span>
+                      <span style={styles.metaValue}>{report.assignedUnit ?? "Unassigned"}</span>
+                    </div>
                   </div>
 
-                  <div style={styles.metaItem}>
-                    <span style={styles.metaLabel}>Confidence</span>
-                    <span style={styles.metaValue}>{formatConfidence(report.aiConfidence)}</span>
+                  {/* Action buttons */}
+                  <div style={styles.actionsRow}>
+                    {/* Status transitions */}
+                    {report.status === "NEW" && (
+                      <button
+                        disabled={isActioning}
+                        onClick={() => handleStatusUpdate(report.id, "IN_PROGRESS")}
+                        style={isActioning ? styles.actionBtnDisabled : styles.actionBtnPrimary}
+                      >
+                        {isActioning ? "Updating…" : "▶ Start Progress"}
+                      </button>
+                    )}
+                    {report.status === "IN_PROGRESS" && (
+                      <button
+                        disabled={isActioning}
+                        onClick={() => handleStatusUpdate(report.id, "RESOLVED")}
+                        style={isActioning ? styles.actionBtnDisabled : styles.actionBtnSuccess}
+                      >
+                        {isActioning ? "Updating…" : "✓ Mark Resolved"}
+                      </button>
+                    )}
+                    {report.status === "RESOLVED" && (
+                      <span style={styles.resolvedLabel}>✔ Resolved</span>
+                    )}
+
+                    {/* Assign unit */}
+                    {report.status !== "RESOLVED" && (
+                      <div style={styles.assignWrapper}>
+                        <button
+                          onClick={() => setAssigningId(isAssigning ? null : report.id)}
+                          style={styles.actionBtnOutline}
+                          disabled={isActioning}
+                        >
+                          {report.assignedUnit ? "⟳ Reassign" : "⊕ Assign Unit"}
+                        </button>
+
+                        {isAssigning && (
+                          <div style={styles.assignDropdown}>
+                            {UNIT_OPTIONS.map((unit) => (
+                              <button
+                                key={unit}
+                                onClick={() => handleAssignUnit(report.id, unit)}
+                                style={
+                                  report.assignedUnit === unit
+                                    ? styles.assignOptionActive
+                                    : styles.assignOption
+                                }
+                              >
+                                {unit}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  <div style={styles.metaItem}>
-                    <span style={styles.metaLabel}>Assigned Unit</span>
-                    <span style={styles.metaValue}>{report.assignedUnit ?? "Unassigned"}</span>
-                  </div>
-                </div>
-
-                <p style={styles.time}>Submitted {new Date(report.createdAt).toLocaleString()}</p>
-              </article>
-            ))}
+                  <p style={styles.time}>Submitted {new Date(report.createdAt).toLocaleString()}</p>
+                </article>
+              );
+            })}
           </div>
         )}
       </div>
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Helper functions
+// ---------------------------------------------------------------------------
 
 function formatLabel(value: string): string {
   if (value === "ALL") return "All";
@@ -354,7 +477,6 @@ function statusBadge(status: ReportStatus): React.CSSProperties {
     IN_PROGRESS: { background: "#fff2d9", color: "#946200" },
     RESOLVED: { background: "#dff5e8", color: "#0f6b34" },
   };
-
   return { ...styles.badgeBase, ...map[status] };
 }
 
@@ -364,18 +486,16 @@ function triageBadge(status: TriageStatus): React.CSSProperties {
     TRIAGED: { background: "#dff5e8", color: "#0f6b34" },
     FAILED: { background: "#ffe3e0", color: "#a3362a" },
   };
-
   return { ...styles.badgeBase, ...map[status] };
 }
 
-function urgencyBadge(urgency: AiUrgency): React.CSSProperties {
+function urgencyBadgeStyle(urgency: AiUrgency): React.CSSProperties {
   const map: Record<AiUrgency, React.CSSProperties> = {
     LOW: { background: "#e6f6ec", color: "#1e7a42" },
     MEDIUM: { background: "#fff5dd", color: "#9f6b00" },
     HIGH: { background: "#ffe9d8", color: "#b05700" },
     CRITICAL: { background: "#ffdfe1", color: "#a40f1f" },
   };
-
   return { ...styles.badgeBase, ...map[urgency] };
 }
 
@@ -391,6 +511,10 @@ function selectStyle(isFocused: boolean): React.CSSProperties {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
+
 const styles: Record<string, React.CSSProperties> = {
   loadingWrapper: {
     minHeight: "100vh",
@@ -399,11 +523,18 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "center",
     background: "#f8f9fa",
   },
-  loadingPulse: {
+  loadingSpinner: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  spinnerRing: {
     width: "48px",
     height: "48px",
     borderRadius: "50%",
-    background: "#cce8de",
+    border: "4px solid #e0e0e0",
+    borderTopColor: "#00513f",
+    animation: "spin 0.8s linear infinite",
   },
   wrapper: {
     minHeight: "100vh",
@@ -432,6 +563,17 @@ const styles: Record<string, React.CSSProperties> = {
     border: "none",
     cursor: "pointer",
     padding: 0,
+  },
+  analyticsLink: {
+    fontFamily: "var(--font-inter), sans-serif",
+    fontSize: "0.85rem",
+    fontWeight: 600,
+    color: "#00513f",
+    textDecoration: "none",
+    padding: "0.5rem 1rem",
+    borderRadius: "0.6rem",
+    background: "rgba(0, 81, 63, 0.08)",
+    transition: "background 140ms ease",
   },
   heroSection: {
     marginBottom: "1.5rem",
@@ -466,39 +608,53 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "0.95rem",
     color: "#404943",
   },
-  statsRow: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
-    gap: "0.75rem",
-    marginBottom: "1rem",
-  },
-  statCard: {
-    background: "#ffffff",
-    borderRadius: "0.9rem",
-    padding: "0.75rem 0.9rem",
+
+  // Tabs
+  tabsRow: {
     display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
+    gap: "0.5rem",
+    marginBottom: "1rem",
+    flexWrap: "wrap",
   },
-  statLabel: {
+  tab: {
     fontFamily: "var(--font-inter), sans-serif",
-    fontSize: "0.78rem",
+    fontSize: "0.82rem",
+    fontWeight: 600,
     color: "#5f6b67",
-    textTransform: "uppercase",
-    letterSpacing: "0.04em",
-    fontWeight: 700,
+    background: "#fff",
+    border: "1px solid #e0e3e1",
+    borderRadius: "0.65rem",
+    padding: "0.55rem 1rem",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: "0.4rem",
+    transition: "all 140ms ease",
   },
-  statValue: {
+  tabActive: {
+    fontFamily: "var(--font-inter), sans-serif",
+    fontSize: "0.82rem",
+    fontWeight: 600,
+    color: "#00513f",
+    background: "#cce8de",
+    border: "1px solid #80c9a8",
+    borderRadius: "0.65rem",
+    padding: "0.55rem 1rem",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: "0.4rem",
+  },
+  tabCount: {
     fontFamily: "var(--font-manrope), sans-serif",
-    fontSize: "1.1rem",
-    color: "#1a2320",
+    fontSize: "0.72rem",
     fontWeight: 800,
+    background: "rgba(0,0,0,0.06)",
+    padding: "0.15rem 0.45rem",
+    borderRadius: "9999px",
   },
-  controlsGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
-    gap: "0.75rem",
-  },
+
+  // Filter controls
   controlsShell: {
     marginBottom: "1.25rem",
     borderRadius: "1rem",
@@ -506,6 +662,11 @@ const styles: Record<string, React.CSSProperties> = {
     background: "rgba(248, 249, 250, 0.8)",
     backdropFilter: "blur(24px)",
     boxShadow: "0 8px 24px -4px rgba(31, 41, 38, 0.06)",
+  },
+  controlsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+    gap: "0.75rem",
   },
   controlBlock: {
     display: "flex",
@@ -565,6 +726,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: "#fff",
     borderRadius: "1.1rem",
     padding: "1.1rem 1.1rem 0.9rem",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
   },
   cardTop: {
     display: "flex",
@@ -628,6 +790,110 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     color: "#1f2926",
   },
+
+  // Actions
+  actionsRow: {
+    display: "flex",
+    gap: "0.5rem",
+    alignItems: "center",
+    marginTop: "0.85rem",
+    flexWrap: "wrap",
+  },
+  actionBtnPrimary: {
+    fontFamily: "var(--font-inter), sans-serif",
+    fontSize: "0.78rem",
+    fontWeight: 700,
+    color: "#fff",
+    background: "#00513f",
+    border: "none",
+    borderRadius: "0.6rem",
+    padding: "0.5rem 1rem",
+    cursor: "pointer",
+    transition: "background 140ms ease",
+  },
+  actionBtnSuccess: {
+    fontFamily: "var(--font-inter), sans-serif",
+    fontSize: "0.78rem",
+    fontWeight: 700,
+    color: "#fff",
+    background: "#0f6b34",
+    border: "none",
+    borderRadius: "0.6rem",
+    padding: "0.5rem 1rem",
+    cursor: "pointer",
+    transition: "background 140ms ease",
+  },
+  actionBtnOutline: {
+    fontFamily: "var(--font-inter), sans-serif",
+    fontSize: "0.78rem",
+    fontWeight: 600,
+    color: "#00513f",
+    background: "transparent",
+    border: "1.5px solid #00513f",
+    borderRadius: "0.6rem",
+    padding: "0.45rem 0.9rem",
+    cursor: "pointer",
+    transition: "all 140ms ease",
+  },
+  actionBtnDisabled: {
+    fontFamily: "var(--font-inter), sans-serif",
+    fontSize: "0.78rem",
+    fontWeight: 700,
+    color: "#999",
+    background: "#e8e8e8",
+    border: "none",
+    borderRadius: "0.6rem",
+    padding: "0.5rem 1rem",
+    cursor: "not-allowed",
+  },
+  resolvedLabel: {
+    fontFamily: "var(--font-inter), sans-serif",
+    fontSize: "0.78rem",
+    fontWeight: 700,
+    color: "#0f6b34",
+  },
+  assignWrapper: {
+    position: "relative" as const,
+  },
+  assignDropdown: {
+    position: "absolute" as const,
+    top: "calc(100% + 4px)",
+    left: 0,
+    background: "#fff",
+    borderRadius: "0.75rem",
+    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+    padding: "0.35rem",
+    zIndex: 20,
+    minWidth: "200px",
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: "2px",
+  },
+  assignOption: {
+    fontFamily: "var(--font-inter), sans-serif",
+    fontSize: "0.8rem",
+    color: "#1c2623",
+    background: "transparent",
+    border: "none",
+    borderRadius: "0.5rem",
+    padding: "0.5rem 0.7rem",
+    cursor: "pointer",
+    textAlign: "left" as const,
+    transition: "background 100ms ease",
+  },
+  assignOptionActive: {
+    fontFamily: "var(--font-inter), sans-serif",
+    fontSize: "0.8rem",
+    color: "#00513f",
+    background: "#cce8de",
+    border: "none",
+    borderRadius: "0.5rem",
+    padding: "0.5rem 0.7rem",
+    cursor: "pointer",
+    textAlign: "left" as const,
+    fontWeight: 700,
+  },
+
   time: {
     marginTop: "0.75rem",
     fontFamily: "var(--font-inter), sans-serif",

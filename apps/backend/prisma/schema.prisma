@@ -80,7 +80,23 @@ model Report {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Status history — tracked by Georgi's dispatcher service
+  statusHistory StatusHistory[]
+
   @@map("reports")
+}
+
+model StatusHistory {
+  id         String        @id @default(uuid())
+  reportId   String
+  report     Report        @relation(fields: [reportId], references: [id])
+  fromStatus ReportStatus?
+  toStatus   ReportStatus
+  changedBy  String?       // userId of dispatcher who changed it
+  changedAt  DateTime      @default(now())
+
+  @@index([reportId])
+  @@map("status_history")
 }
 
 model Config {

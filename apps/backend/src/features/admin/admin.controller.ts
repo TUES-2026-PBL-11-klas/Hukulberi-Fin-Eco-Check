@@ -17,6 +17,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Config } from './schemas/config.entity';
 import { FeatureFlag } from './schemas/feature-flag.entity';
+import { AuditLog } from './schemas/audit-log.entity';
 
 @ApiTags('Admin')
 @ApiHeader({
@@ -46,7 +47,7 @@ export class AdminController {
 
   @Get('activity')
   @ApiOperation({ summary: 'Get recent admin activity logs' })
-  async getAuditLogs(): Promise<any[]> {
+  async getAuditLogs(): Promise<AuditLog[]> {
     return this.adminService.getAuditLogs();
   }
 

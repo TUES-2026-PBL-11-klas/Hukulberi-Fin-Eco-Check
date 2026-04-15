@@ -80,7 +80,7 @@ export class AiTriageService {
     const parsed = this.parseJson(rawText) as {
       category?: string;
       urgency?: string;
-      confidence?: number;
+      confidence?: number | string;
       reasoning?: string;
     };
 
@@ -163,31 +163,97 @@ export class AiTriageService {
       `${input.title} ${input.description} ${input.location}`.toLowerCase();
 
     let category: AiCategory = 'OTHER';
-    if (/bin|trash|garbage|waste|rubbish/.test(text)) category = 'WASTE';
-    else if (/tree|branch|green|park|grass/.test(text)) category = 'GREENERY';
-    else if (/pothole|road|street|asphalt|sidewalk|hole/.test(text))
+    let categorySignals = 0;
+
+    if (/bin|trash|garbage|waste|rubbish/.test(text)) {
+      category = 'WASTE';
+      categorySignals += 1;
+    } else if (/tree|branch|green|park|grass/.test(text)) {
+      category = 'GREENERY';
+      categorySignals += 1;
+    } else if (/pothole|road|street|asphalt|sidewalk|hole/.test(text)) {
       category = 'ROAD_INFRASTRUCTURE';
-    else if (/parking|parked|car on|illegal parking/.test(text))
+      categorySignals += 1;
+    } else if (/parking|parked|car on|illegal parking/.test(text)) {
       category = 'ILLEGAL_PARKING';
-    else if (/water|sewer|leak|pipe|flood/.test(text)) category = 'WATER_SEWER';
+      categorySignals += 1;
+    } else if (/water|sewer|leak|pipe|flood/.test(text)) {
+      category = 'WATER_SEWER';
+      categorySignals += 1;
+    }
 
     let urgency: AiUrgency = 'LOW';
-    if (/danger|urgent|immediate|accident|injury|risk/.test(text))
+    let urgencySignals = 0;
+
+    if (/danger|urgent|immediate|accident|injury|risk/.test(text)) {
       urgency = 'CRITICAL';
-    else if (/blocked|cannot pass|major|severe|flood/.test(text))
+      urgencySignals += 1;
+    } else if (/blocked|cannot pass|major|severe|flood/.test(text)) {
       urgency = 'HIGH';
-    else if (/soon|growing|worsening/.test(text)) urgency = 'MEDIUM';
+      urgencySignals += 1;
+    } else if (/soon|growing|worsening/.test(text)) {
+      urgency = 'MEDIUM';
+      urgencySignals += 1;
+    }
+
+    const confidence = this.estimateFallbackConfidence({
+      category,
+      urgency,
+      categorySignals,
+      urgencySignals,
+      title: input.title,
+      description: input.description,
+      location: input.location,
+    });
 
     return {
       category,
       urgency,
-      confidence: 0.45,
+      confidence,
       reasoning:
-        `Gemini quota exceeded (429). Applied local fallback triage. ${errorText}`.slice(
+        `Gemini quota exceeded (429). Applied local fallback triage (${Math.round(confidence * 100)}% confidence). ${errorText}`.slice(
           0,
           220,
         ),
     };
+  }
+
+  private estimateFallbackConfidence(input: {
+    category: AiCategory;
+    urgency: AiUrgency;
+    categorySignals: number;
+    urgencySignals: number;
+    title: string;
+    description: string;
+    location: string;
+  }): number {
+    let score = 0.32;
+
+    if (input.category !== 'OTHER') {
+      score += 0.14;
+    }
+
+    if (input.urgency === 'MEDIUM') {
+      score += 0.06;
+    } else if (input.urgency === 'HIGH') {
+      score += 0.1;
+    } else if (input.urgency === 'CRITICAL') {
+      score += 0.14;
+    }
+
+    score += Math.min(0.24, input.categorySignals * 0.08);
+    score += Math.min(0.12, input.urgencySignals * 0.06);
+
+    const textLength = `${input.title} ${input.description}`.trim().length;
+    if (textLength >= 80) {
+      score += 0.05;
+    }
+
+    if ((input.location ?? '').trim().length >= 3) {
+      score += 0.03;
+    }
+
+    return this.normalizeConfidence(score);
   }
 
   private parseJson(raw: string): unknown {
@@ -251,16 +317,30 @@ export class AiTriageService {
     return map[normalized];
   }
 
-  private normalizeConfidence(value?: number): number {
-    if (typeof value !== 'number' || Number.isNaN(value)) {
+  private normalizeConfidence(value?: number | string): number {
+    let numericValue: number | undefined;
+
+    if (typeof value === 'number') {
+      numericValue = value;
+    } else if (typeof value === 'string') {
+      const trimmed = value.trim();
+
+      if (trimmed.endsWith('%')) {
+        numericValue = Number(trimmed.slice(0, -1).replace(',', '.')) / 100;
+      } else {
+        numericValue = Number(trimmed.replace(',', '.'));
+      }
+    }
+
+    if (typeof numericValue !== 'number' || Number.isNaN(numericValue)) {
       return 0.5;
     }
 
-    if (value > 1 && value <= 100) {
-      return Math.max(0, Math.min(1, value / 100));
+    if (numericValue > 1 && numericValue <= 100) {
+      return Math.max(0, Math.min(1, numericValue / 100));
     }
 
-    return Math.max(0, Math.min(1, value));
+    return Math.max(0, Math.min(1, numericValue));
   }
 
   private normalizeReasoning(value?: string): string {

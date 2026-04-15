@@ -7,9 +7,27 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { Config } from './schemas/config.entity';
 import { FeatureFlag } from './schemas/feature-flag.entity';
+import { AuditLog } from './schemas/audit-log.entity';
 import { UpdateConfigDto } from './dto/update-config.dto';
 import { CreateConfigDto } from './dto/create-config.dto';
 import { UpdateFeatureFlagDto } from './dto/update-feature-flag.dto';
+
+type AuditLogDelegate = {
+  findMany: (args: {
+    orderBy: { createdAt: 'desc' };
+    take: number;
+  }) => Promise<AuditLog[]>;
+  create: (args: {
+    data: {
+      action: string;
+      entity: string;
+      entityId?: string;
+      oldValue?: string;
+      newValue?: string;
+      userId: string;
+    };
+  }) => Promise<unknown>;
+};
 
 @Injectable()
 export class AdminService implements OnModuleInit {
@@ -197,8 +215,13 @@ export class AdminService implements OnModuleInit {
 
   // ── Stats & Activity ─────────────────────────────────────────
 
-  async getAuditLogs() {
-    return this.prisma.auditLog.findMany({
+  getAuditLogs(): Promise<AuditLog[]> {
+    const auditLog = this.getAuditLogDelegate();
+    if (!auditLog) {
+      return Promise.resolve([]);
+    }
+
+    return auditLog.findMany({
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
@@ -230,8 +253,13 @@ export class AdminService implements OnModuleInit {
     newValue?: string;
     userId?: string;
   }) {
+    const auditLog = this.getAuditLogDelegate();
+    if (!auditLog) {
+      return;
+    }
+
     try {
-      await this.prisma.auditLog.create({
+      await auditLog.create({
         data: {
           action: data.action,
           entity: data.entity,
@@ -245,5 +273,23 @@ export class AdminService implements OnModuleInit {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to create audit log: ${message}`);
     }
+  }
+
+  private getAuditLogDelegate(): AuditLogDelegate | null {
+    const candidate = (
+      this.prisma as unknown as {
+        auditLog?: Partial<AuditLogDelegate>;
+      }
+    ).auditLog;
+
+    if (
+      !candidate ||
+      typeof candidate.findMany !== 'function' ||
+      typeof candidate.create !== 'function'
+    ) {
+      return null;
+    }
+
+    return candidate as AuditLogDelegate;
   }
 }

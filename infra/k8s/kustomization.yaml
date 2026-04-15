@@ -18,7 +18,7 @@ resources:
 - grafana-service.yaml
 - ingress.yaml
 images:
-- newTag: "7837313"
+- newTag: ff38ab7
 - name: docker.io/darkata/ecocheck-backend
   newTag: latest
 - name: docker.io/darkata/ecocheck-frontend

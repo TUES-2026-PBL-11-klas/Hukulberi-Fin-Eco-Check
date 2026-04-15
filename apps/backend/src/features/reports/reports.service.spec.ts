@@ -430,7 +430,9 @@ describe('ReportsService — Dispatcher Operations', () => {
       const createdAt = new Date(resolvedAt.getTime() - 30 * 60_000);
 
       mockPrisma.statusHistory.findMany
-        .mockResolvedValueOnce([{ reportId: 'legacy-1', changedAt: resolvedAt }])
+        .mockResolvedValueOnce([
+          { reportId: 'legacy-1', changedAt: resolvedAt },
+        ])
         .mockResolvedValueOnce([]);
 
       mockPrisma.report.findMany.mockResolvedValueOnce([

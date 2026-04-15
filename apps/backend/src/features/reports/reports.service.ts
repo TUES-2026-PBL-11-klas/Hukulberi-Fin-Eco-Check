@@ -458,6 +458,10 @@ export class ReportsService {
     const prismaAny = this.prisma as unknown as {
       report: {
         count: (args?: { where?: Record<string, unknown> }) => Promise<number>;
+        findMany: (args: {
+          where: { id: { in: string[] } };
+          select: { id: true; createdAt: true };
+        }) => Promise<Array<{ id: string; createdAt: Date }>>;
       };
     };
 
@@ -539,11 +543,15 @@ export class ReportsService {
 
     if (resolvedTransitions.length > 0) {
       // For each resolved report, find the creation entry (toStatus = NEW)
+      const resolvedReportIds = [
+        ...new Set(resolvedTransitions.map((t) => t.reportId)),
+      ];
+
       const creationTransitions = await statusHistory.findMany({
         where: {
           toStatus: 'NEW',
           reportId: {
-            in: resolvedTransitions.map((t) => t.reportId),
+            in: resolvedReportIds,
           },
         },
         select: { reportId: true, changedAt: true },
@@ -552,6 +560,23 @@ export class ReportsService {
       const creationMap = new Map<string, Date>();
       for (const t of creationTransitions) {
         creationMap.set(t.reportId, t.changedAt);
+      }
+
+      // Legacy reports may not have NEW entries in status history.
+      // Fall back to report.createdAt so avg resolution remains available.
+      const missingCreationIds = resolvedReportIds.filter(
+        (reportId) => !creationMap.has(reportId),
+      );
+
+      if (missingCreationIds.length > 0) {
+        const reportsWithCreatedAt = await prismaAny.report.findMany({
+          where: { id: { in: missingCreationIds } },
+          select: { id: true, createdAt: true },
+        });
+
+        for (const report of reportsWithCreatedAt) {
+          creationMap.set(report.id, report.createdAt);
+        }
       }
 
       let totalMs = 0;

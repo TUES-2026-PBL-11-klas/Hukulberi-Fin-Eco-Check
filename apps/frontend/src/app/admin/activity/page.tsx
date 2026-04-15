@@ -1,6 +1,82 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
+interface AuditLog {
+  id: string;
+  action: string;
+  entity: string;
+  entityId: string;
+  oldValue: string;
+  newValue: string;
+  userId: string;
+  createdAt: string;
+}
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
 export default function ActivityPage() {
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  async function fetchLogs() {
+    try {
+      const res = await fetch(`${API_BASE}/admin/activity`, {
+        headers: { "x-user-role": "admin" },
+      });
+      if (res.ok) {
+        setLogs(await res.json());
+      }
+    } catch (err) {
+      console.error("Failed to fetch activity logs", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function formatAction(log: AuditLog) {
+    switch (log.action) {
+      case "FLAG_TOGGLED":
+        try {
+          const newVal = JSON.parse(log.newValue);
+          return (
+            <>
+              Feature flag <strong>{log.entityId}</strong> was turned{" "}
+              <span style={{ color: newVal.enabled ? "#22c55e" : "#ef4444" }}>
+                {newVal.enabled ? "ON" : "OFF"}
+              </span>
+            </>
+          );
+        } catch {
+          return `Feature flag ${log.entityId} was updated`;
+        }
+      case "CONFIG_UPDATED":
+        return (
+          <>
+            Configuration <strong>{log.entityId}</strong> was updated
+          </>
+        );
+      case "CONFIG_CREATED":
+        return (
+          <>
+            New configuration <strong>{log.entityId}</strong> was created
+          </>
+        );
+      case "CONFIG_DELETED":
+        return (
+          <>
+            Configuration <strong>{log.entityId}</strong> was removed
+          </>
+        );
+      default:
+        return `${log.action} on ${log.entity} (${log.entityId})`;
+    }
+  }
+
   return (
     <div className="activity-page">
       <style>{`
@@ -46,17 +122,16 @@ export default function ActivityPage() {
           line-height: 1.6;
         }
 
-        .timeline-preview {
+        .timeline-container {
           margin-top: 40px;
           display: flex;
           flex-direction: column;
-          gap: 0;
         }
 
         .timeline-item {
           display: flex;
-          gap: 16px;
-          padding: 16px 0;
+          gap: 20px;
+          padding-bottom: 24px;
           position: relative;
         }
 
@@ -69,34 +144,59 @@ export default function ActivityPage() {
         }
 
         .timeline-dot {
-          width: 10px;
-          height: 10px;
+          width: 12px;
+          height: 12px;
           border-radius: 50%;
-          background: #27272a;
-          border: 2px solid #3f3f46;
-          flex-shrink: 0;
+          background: #3f3f46;
+          border: 2px solid #18181b;
+          z-index: 1;
         }
 
         .timeline-line {
           width: 2px;
           flex: 1;
           background: #27272a;
-          margin-top: 4px;
+          margin-top: -4px;
+          margin-bottom: -15px;
         }
 
         .timeline-content {
           flex: 1;
+          background: rgba(255, 255, 255, 0.01);
+          border: 1px solid rgba(255, 255, 255, 0.03);
+          border-radius: 12px;
+          padding: 16px;
+          margin-top: -6px;
         }
 
         .timeline-content p {
-          font-size: 13px;
-          color: #3f3f46;
-          margin: 0 0 4px 0;
+          font-size: 14px;
+          color: #e4e4e7;
+          margin: 0 0 6px 0;
+          line-height: 1.5;
         }
 
         .timeline-content span {
-          font-size: 11px;
-          color: #27272a;
+          font-size: 12px;
+          color: #71717a;
+          display: block;
+        }
+
+        .user-tag {
+          font-family: monospace;
+          background: rgba(255, 255, 255, 0.05);
+          padding: 2px 6px;
+          border-radius: 4px;
+          color: #a1a1aa;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .timeline-item {
+          animation: fadeIn 0.4s ease forwards;
         }
       `}</style>
 
@@ -105,35 +205,45 @@ export default function ActivityPage() {
         Track configuration changes and system events
       </p>
 
-      <div className="activity-empty">
-        <div className="activity-empty-icon">📋</div>
-        <h2>No Activity Yet</h2>
-        <p>
-          Activity logs will appear here as team members make changes to feature
-          flags, settings, and system configuration. This feature will be fully
-          connected once the platform is live.
-        </p>
-      </div>
-
-      <div className="timeline-preview">
-        {[
-          "System initialized",
-          "Default feature flags seeded",
-          "Config entries created",
-          "Waiting for activity...",
-        ].map((text, i) => (
-          <div key={i} className="timeline-item">
-            <div className="timeline-dot-col">
-              <div className="timeline-dot" />
-              {i < 3 && <div className="timeline-line" />}
+      {loading ? (
+        <div className="activity-empty">
+          <p>Loading activities...</p>
+        </div>
+      ) : logs.length === 0 ? (
+        <div className="activity-empty">
+          <div className="activity-empty-icon">📋</div>
+          <h2>No Activity Yet</h2>
+          <p>
+            Changes to feature flags, settings, and system configuration will
+            appear here.
+          </p>
+        </div>
+      ) : (
+        <div className="timeline-container">
+          {logs.map((log, i) => (
+            <div key={log.id} className="timeline-item">
+              <div className="timeline-dot-col">
+                <div
+                  className="timeline-dot"
+                  style={{
+                    backgroundColor: log.action.includes("FLAG")
+                      ? "#f59e0b"
+                      : "#6366f1",
+                  }}
+                />
+                {i < logs.length - 1 && <div className="timeline-line" />}
+              </div>
+              <div className="timeline-content">
+                <p>{formatAction(log)}</p>
+                <span>
+                  By <span className="user-tag">{log.userId}</span> •{" "}
+                  {new Date(log.createdAt).toLocaleString()}
+                </span>
+              </div>
             </div>
-            <div className="timeline-content">
-              <p>{text}</p>
-              <span>—</span>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

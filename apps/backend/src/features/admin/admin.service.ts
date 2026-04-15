@@ -113,19 +113,42 @@ export class AdminService implements OnModuleInit {
   }
 
   async updateConfig(key: string, dto: UpdateConfigDto): Promise<Config> {
-    await this.getConfigByKey(key);
-    return this.prisma.config.update({
+    const oldConfig = await this.getConfigByKey(key);
+    const updated = await this.prisma.config.update({
       where: { key },
       data: {
         value: dto.value,
         description: dto.description,
       },
     });
+
+    await this.logAction({
+      action: 'CONFIG_UPDATED',
+      entity: 'Config',
+      entityId: key,
+      oldValue: JSON.stringify({
+        value: oldConfig.value,
+        description: oldConfig.description,
+      }),
+      newValue: JSON.stringify({
+        value: updated.value,
+        description: updated.description,
+      }),
+    });
+
+    return updated;
   }
 
   async deleteConfig(key: string): Promise<void> {
-    await this.getConfigByKey(key);
+    const oldConfig = await this.getConfigByKey(key);
     await this.prisma.config.delete({ where: { key } });
+
+    await this.logAction({
+      action: 'CONFIG_DELETED',
+      entity: 'Config',
+      entityId: key,
+      oldValue: JSON.stringify(oldConfig),
+    });
   }
 
   // ── Feature Flags ────────────────────────────────────────────
@@ -146,17 +169,40 @@ export class AdminService implements OnModuleInit {
     key: string,
     dto: UpdateFeatureFlagDto,
   ): Promise<FeatureFlag> {
-    await this.getFeatureFlag(key);
-    return this.prisma.featureFlag.update({
+    const oldFlag = await this.getFeatureFlag(key);
+    const updated = await this.prisma.featureFlag.update({
       where: { key },
       data: {
         enabled: dto.enabled,
         description: dto.description,
       },
     });
+
+    await this.logAction({
+      action: 'FLAG_TOGGLED',
+      entity: 'FeatureFlag',
+      entityId: key,
+      oldValue: JSON.stringify({
+        enabled: oldFlag.enabled,
+        description: oldFlag.description,
+      }),
+      newValue: JSON.stringify({
+        enabled: updated.enabled,
+        description: updated.description,
+      }),
+    });
+
+    return updated;
   }
 
-  // ── Stats ────────────────────────────────────────────────────
+  // ── Stats & Activity ─────────────────────────────────────────
+
+  async getAuditLogs() {
+    return this.prisma.auditLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+  }
 
   async getStats() {
     const totalConfigs = await this.prisma.config.count();
@@ -174,5 +220,30 @@ export class AdminService implements OnModuleInit {
       disabledFlags: totalFlags - enabledFlags,
       serverTime: new Date().toISOString(),
     };
+  }
+
+  private async logAction(data: {
+    action: string;
+    entity: string;
+    entityId: string;
+    oldValue?: string;
+    newValue?: string;
+    userId?: string;
+  }) {
+    try {
+      await this.prisma.auditLog.create({
+        data: {
+          action: data.action,
+          entity: data.entity,
+          entityId: data.entityId,
+          oldValue: data.oldValue,
+          newValue: data.newValue,
+          userId: data.userId ?? 'system-admin', // Default for MVP
+        },
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to create audit log: ${message}`);
+    }
   }
 }

@@ -18,11 +18,20 @@ interface FeatureFlag {
   updatedAt: string;
 }
 
+interface AuditLog {
+  id: string;
+  action: string;
+  entityId: string;
+  newValue: string;
+  createdAt: string;
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
+  const [activities, setActivities] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,12 +41,17 @@ export default function AdminDashboard() {
   async function fetchData() {
     try {
       const headers = { "x-user-role": "admin" };
-      const [statsRes, flagsRes] = await Promise.all([
+      const [statsRes, flagsRes, activityRes] = await Promise.all([
         fetch(`${API_BASE}/admin/stats`, { headers }),
         fetch(`${API_BASE}/admin/feature-flags`, { headers }),
+        fetch(`${API_BASE}/admin/activity`, { headers }),
       ]);
       if (statsRes.ok) setStats(await statsRes.json());
       if (flagsRes.ok) setFlags(await flagsRes.json());
+      if (activityRes.ok) {
+        const logs = await activityRes.json();
+        setActivities(logs.slice(0, 5)); // Show only top 5 on dashboard
+      }
     } catch {
       // API not available — show defaults
     } finally {
@@ -59,10 +73,30 @@ export default function AdminDashboard() {
         setFlags((prev) =>
           prev.map((f) => (f.key === key ? { ...f, enabled: !current } : f))
         );
+        // Refresh activities to show the toggle
+        fetchData();
       }
     } catch {
       // handle error silently
     }
+  }
+
+  function formatAction(log: AuditLog) {
+    if (log.action === "FLAG_TOGGLED") {
+      try {
+        const newVal = JSON.parse(log.newValue);
+        return (
+          <span>
+            Flag <strong>{log.entityId}</strong> →{" "}
+            {newVal.enabled ? "Enabled" : "Disabled"}
+          </span>
+        );
+      } catch {
+        return `Flag ${log.entityId} updated`;
+      }
+    }
+    if (log.action === "CONFIG_UPDATED") return `Config ${log.entityId} updated`;
+    return `${log.action} on ${log.entityId}`;
   }
 
   const statCards = [
@@ -269,24 +303,57 @@ export default function AdminDashboard() {
           box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
         }
 
-        /* ── Activity placeholder ─────────────── */
+        /* ── Activity list ────────────────────── */
         .activity-card {
           background: rgba(255, 255, 255, 0.02);
           border: 1px solid rgba(255, 255, 255, 0.06);
           border-radius: 12px;
-          padding: 32px;
-          text-align: center;
+          padding: 24px;
+          text-align: left;
         }
 
-        .activity-card p {
+        .activity-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .activity-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-size: 14px;
+          color: #a1a1aa;
+          padding-bottom: 12px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .activity-item:last-child {
+          border-bottom: none;
+          padding-bottom: 0;
+        }
+
+        .activity-item-time {
+          font-size: 11px;
+          color: #52525b;
+          min-width: 80px;
+        }
+
+        .activity-item-icon {
+          font-size: 16px;
+        }
+
+        .activity-empty-p {
           color: #52525b;
           font-size: 14px;
           margin: 0;
+          text-align: center;
         }
 
         .activity-icon {
           font-size: 32px;
           margin-bottom: 12px;
+          text-align: center;
         }
 
         /* ── Loading skeleton ─────────────────── */
@@ -403,8 +470,34 @@ export default function AdminDashboard() {
         <span>📋</span> Recent Activity
       </h2>
       <div className="activity-card">
-        <div className="activity-icon">🕐</div>
-        <p>Activity log will appear here once the system is connected.</p>
+        {loading ? (
+          <p className="activity-empty-p">Loading...</p>
+        ) : activities.length > 0 ? (
+          <div className="activity-list">
+            {activities.map((log) => (
+              <div key={log.id} className="activity-item">
+                <span className="activity-item-icon">
+                  {log.action.includes("FLAG") ? "🚩" : "⚙️"}
+                </span>
+                <span style={{ flex: 1 }}>{formatAction(log)}</span>
+                <span className="activity-item-time">
+                  {new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(
+                    Math.round(
+                      (new Date(log.createdAt).getTime() - Date.now()) /
+                        (1000 * 60)
+                    ),
+                    "minute"
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            <div className="activity-icon">🕐</div>
+            <p className="activity-empty-p">No activity recorded yet.</p>
+          </>
+        )}
       </div>
     </div>
   );

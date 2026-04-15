@@ -44,6 +44,12 @@ export class AdminController {
     return this.adminService.getStats();
   }
 
+  @Get('activity')
+  @ApiOperation({ summary: 'Get recent admin activity logs' })
+  async getAuditLogs(): Promise<any[]> {
+    return this.adminService.getAuditLogs();
+  }
+
   // ── Configs ──────────────────────────────────────────────────
 
   @Get('config')

@@ -53,6 +53,7 @@ type ReportListItem = {
 type DispatcherQueueItem = {
   id: string;
   title: string;
+  description: string;
   location: string;
   status: string;
   triageStatus: TriageStatus;
@@ -62,6 +63,32 @@ type DispatcherQueueItem = {
   assignedUnit: string | null;
   createdAt: Date;
   updatedAt: Date;
+};
+
+type StatusHistoryRecord = {
+  reportId: string;
+  changedAt: Date;
+};
+
+type StatusHistoryDelegate = {
+  create(args: {
+    data: {
+      reportId: string;
+      fromStatus: ReportStatus | null;
+      toStatus: ReportStatus;
+      changedBy: string;
+    };
+  }): Promise<unknown>;
+  findMany(args: {
+    where: {
+      toStatus: ReportStatus;
+      reportId?: { in: string[] };
+    };
+    select: {
+      reportId: true;
+      changedAt: true;
+    };
+  }): Promise<StatusHistoryRecord[]>;
 };
 
 type ReportModelDelegate = {
@@ -115,6 +142,7 @@ type ReportModelDelegate = {
     select: {
       id: true;
       title: true;
+      description: true;
       location: true;
       status: true;
       triageStatus: true;
@@ -157,6 +185,7 @@ const VALID_TRANSITIONS: Record<ReportStatus, ReportStatus[]> = {
 @Injectable()
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
+  private hasLoggedMissingStatusHistoryDelegate = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -277,6 +306,7 @@ export class ReportsService {
       select: {
         id: true,
         title: true,
+        description: true,
         location: true,
         status: true,
         triageStatus: true,
@@ -429,12 +459,6 @@ export class ReportsService {
       report: {
         count: (args?: { where?: Record<string, unknown> }) => Promise<number>;
       };
-      statusHistory: {
-        findMany: (args: {
-          where: Record<string, unknown>;
-          select: Record<string, true>;
-        }) => Promise<Array<{ reportId: string; changedAt: Date }>>;
-      };
     };
 
     // Count by status
@@ -473,8 +497,40 @@ export class ReportsService {
       prismaAny.report.count({ where: { aiCategory: 'OTHER' } }),
     ]);
 
+    const baseStats = {
+      total: totalNew + totalInProgress + totalResolved,
+      byStatus: {
+        NEW: totalNew,
+        IN_PROGRESS: totalInProgress,
+        RESOLVED: totalResolved,
+      },
+      byUrgency: {
+        LOW: countLow,
+        MEDIUM: countMedium,
+        HIGH: countHigh,
+        CRITICAL: countCritical,
+      },
+      byCategory: {
+        WASTE: countWaste,
+        GREENERY: countGreenery,
+        ROAD_INFRASTRUCTURE: countRoad,
+        ILLEGAL_PARKING: countParking,
+        WATER_SEWER: countWater,
+        OTHER: countOther,
+      },
+    };
+
+    const statusHistory = this.getStatusHistoryDelegate();
+    if (!statusHistory) {
+      this.logMissingStatusHistoryDelegate();
+      return {
+        ...baseStats,
+        avgResolutionMs: null,
+      };
+    }
+
     // Average resolution time from status history
-    const resolvedTransitions = await prismaAny.statusHistory.findMany({
+    const resolvedTransitions = await statusHistory.findMany({
       where: { toStatus: 'RESOLVED' },
       select: { reportId: true, changedAt: true },
     });
@@ -483,13 +539,11 @@ export class ReportsService {
 
     if (resolvedTransitions.length > 0) {
       // For each resolved report, find the creation entry (toStatus = NEW)
-      const creationTransitions = await prismaAny.statusHistory.findMany({
+      const creationTransitions = await statusHistory.findMany({
         where: {
           toStatus: 'NEW',
           reportId: {
-            in: resolvedTransitions.map(
-              (t: { reportId: string }) => t.reportId,
-            ),
+            in: resolvedTransitions.map((t) => t.reportId),
           },
         },
         select: { reportId: true, changedAt: true },
@@ -518,26 +572,7 @@ export class ReportsService {
     }
 
     return {
-      total: totalNew + totalInProgress + totalResolved,
-      byStatus: {
-        NEW: totalNew,
-        IN_PROGRESS: totalInProgress,
-        RESOLVED: totalResolved,
-      },
-      byUrgency: {
-        LOW: countLow,
-        MEDIUM: countMedium,
-        HIGH: countHigh,
-        CRITICAL: countCritical,
-      },
-      byCategory: {
-        WASTE: countWaste,
-        GREENERY: countGreenery,
-        ROAD_INFRASTRUCTURE: countRoad,
-        ILLEGAL_PARKING: countParking,
-        WATER_SEWER: countWater,
-        OTHER: countOther,
-      },
+      ...baseStats,
       avgResolutionMs,
     };
   }
@@ -592,22 +627,44 @@ export class ReportsService {
     toStatus: ReportStatus,
     changedBy: string,
   ) {
-    const prismaAny = this.prisma as unknown as {
-      statusHistory: {
-        create: (args: {
-          data: {
-            reportId: string;
-            fromStatus: ReportStatus | null;
-            toStatus: ReportStatus;
-            changedBy: string;
-          };
-        }) => Promise<unknown>;
-      };
-    };
+    const statusHistory = this.getStatusHistoryDelegate();
+    if (!statusHistory) {
+      this.logMissingStatusHistoryDelegate();
+      return;
+    }
 
-    await prismaAny.statusHistory.create({
+    await statusHistory.create({
       data: { reportId, fromStatus, toStatus, changedBy },
     });
+  }
+
+  private getStatusHistoryDelegate(): StatusHistoryDelegate | null {
+    const candidate = (
+      this.prisma as unknown as {
+        statusHistory?: Partial<StatusHistoryDelegate>;
+      }
+    ).statusHistory;
+
+    if (
+      !candidate ||
+      typeof candidate.create !== 'function' ||
+      typeof candidate.findMany !== 'function'
+    ) {
+      return null;
+    }
+
+    return candidate as StatusHistoryDelegate;
+  }
+
+  private logMissingStatusHistoryDelegate() {
+    if (this.hasLoggedMissingStatusHistoryDelegate) {
+      return;
+    }
+
+    this.hasLoggedMissingStatusHistoryDelegate = true;
+    this.logger.warn(
+      'Prisma statusHistory delegate is unavailable; status history writes and resolution-time analytics are disabled. Run "npm run prisma:generate -w apps/backend" and restart the backend.',
+    );
   }
 
   private isSupportedPhotoPayload(photo: string): boolean {

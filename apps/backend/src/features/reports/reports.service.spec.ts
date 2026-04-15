@@ -265,6 +265,7 @@ describe('ReportsService — Dispatcher Operations', () => {
         where: { id: 'r-5' },
         data: {
           assignedUnit: 'Waste Management',
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           assignedAt: expect.any(Date),
         },
       });

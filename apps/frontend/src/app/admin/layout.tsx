@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "../../lib/useAuth";
+import { logout } from "../../lib/api";
 
 const navItems = [
   {
@@ -41,6 +43,132 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, loading } = useAuth();
+
+  // ── Loading state ─────────────────────────────
+  if (loading) {
+    return (
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        background: "#09090b",
+        fontFamily: "'Inter', sans-serif",
+      }}>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+          @keyframes spin { to { transform: rotate(360deg); } }
+          .auth-spinner {
+            width: 32px; height: 32px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: #22c55e;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+          }
+        `}</style>
+        <div style={{ textAlign: "center" }}>
+          <div className="auth-spinner" style={{ margin: "0 auto 16px" }} />
+          <p style={{ color: "#71717a", fontSize: "14px", margin: 0 }}>
+            Verifying access…
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Access denied for non-admins ──────────────
+  if (!user || user.role !== "ADMIN") {
+    return (
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        background: "#09090b",
+        fontFamily: "'Inter', sans-serif",
+      }}>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+          .denied-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(239,68,68,0.2);
+            border-radius: 16px;
+            padding: 48px 40px;
+            text-align: center;
+            max-width: 420px;
+            width: 100%;
+            margin: 0 16px;
+          }
+          .denied-icon {
+            width: 56px; height: 56px;
+            border-radius: 14px;
+            background: rgba(239,68,68,0.1);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px;
+            margin: 0 auto 20px;
+          }
+          .denied-card h1 {
+            font-size: 22px; font-weight: 700;
+            color: #fafafa; margin: 0 0 8px;
+          }
+          .denied-card p {
+            font-size: 14px; color: #71717a;
+            margin: 0 0 28px; line-height: 1.6;
+          }
+          .denied-btn {
+            display: inline-block;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: 14px; font-weight: 600;
+            text-decoration: none;
+            transition: all 0.15s;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            border: none;
+          }
+          .denied-btn-primary {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: #fff;
+            margin-right: 8px;
+          }
+          .denied-btn-primary:hover { opacity: 0.9; }
+          .denied-btn-ghost {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #a1a1aa;
+          }
+          .denied-btn-ghost:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fafafa;
+          }
+        `}</style>
+        <div className="denied-card">
+          <div className="denied-icon">🔒</div>
+          <h1>Access Denied</h1>
+          <p>
+            {user
+              ? `You're signed in as "${user.email}" (role: ${user.role}). Only administrators can access this panel.`
+              : "You need to sign in with an admin account to access this panel."}
+          </p>
+          <div>
+            <Link href="/" className="denied-btn denied-btn-primary">Go Home</Link>
+            <button
+              className="denied-btn denied-btn-ghost"
+              onClick={() => { logout(); }}
+            >
+              {user ? "Sign Out" : "Sign In"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── User initials for avatar ──────────────────
+  const initials = user.displayName
+    ? user.displayName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+    : user.email[0].toUpperCase();
 
   return (
     <div className="admin-layout">
@@ -227,6 +355,25 @@ export default function AdminLayout({
           cursor: pointer;
         }
 
+        .admin-logout-btn {
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 6px;
+          color: #71717a;
+          font-size: 12px;
+          font-weight: 500;
+          padding: 5px 12px;
+          cursor: pointer;
+          transition: all 0.15s;
+          font-family: 'Inter', sans-serif;
+        }
+
+        .admin-logout-btn:hover {
+          background: rgba(239,68,68,0.1);
+          border-color: rgba(239,68,68,0.2);
+          color: #ef4444;
+        }
+
         .admin-content {
           padding: 32px;
         }
@@ -339,7 +486,10 @@ export default function AdminLayout({
           </div>
           <div className="admin-topbar-actions">
             <span className="admin-topbar-badge">Admin</span>
-            <div className="admin-avatar">A</div>
+            <div className="admin-avatar" title={user.email}>{initials}</div>
+            <button className="admin-logout-btn" onClick={() => logout()}>
+              Sign Out
+            </button>
           </div>
         </header>
         <main className="admin-content">{children}</main>

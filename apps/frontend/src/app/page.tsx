@@ -43,22 +43,8 @@ export default function Home() {
         .hp-nav-logo {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 0;
           text-decoration: none;
-        }
-
-        .hp-nav-logo-icon {
-          width: 34px;
-          height: 34px;
-          border-radius: 10px;
-          background: linear-gradient(135deg, #00a67e, #00513f);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #fff;
-          font-weight: 900;
-          font-size: 13px;
-          font-family: 'Manrope', sans-serif;
         }
 
         .hp-nav-logo-text {
@@ -153,36 +139,6 @@ export default function Home() {
           border-radius: 50%;
           background: radial-gradient(ellipse, rgba(0,81,63,0.05) 0%, transparent 70%);
           pointer-events: none;
-        }
-
-        .hp-hero-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 6px 16px 6px 8px;
-          background: #fff;
-          border: 1px solid rgba(0,81,63,0.12);
-          border-radius: 100px;
-          font-size: 13px;
-          font-weight: 600;
-          color: #00513f;
-          margin-bottom: 32px;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-          animation: fadeInUp 0.6s ease both;
-        }
-
-        .hp-hero-pill-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: #00a67e;
-          box-shadow: 0 0 0 3px rgba(0,166,126,0.2);
-          animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-          0%, 100% { box-shadow: 0 0 0 3px rgba(0,166,126,0.2); }
-          50% { box-shadow: 0 0 0 8px rgba(0,166,126,0.05); }
         }
 
         .hp-hero-title {
@@ -411,7 +367,6 @@ export default function Home() {
       {/* ── Navbar ──────────────────────────── */}
       <nav className="hp-nav">
         <Link href="/" className="hp-nav-logo">
-          <div className="hp-nav-logo-icon">EC</div>
           <span className="hp-nav-logo-text">EcoCheck</span>
         </Link>
         <div className="hp-nav-right">
@@ -446,11 +401,6 @@ export default function Home() {
 
       {/* ── Hero ────────────────────────────── */}
       <section className="hp-hero">
-        <div className="hp-hero-pill">
-          <span className="hp-hero-pill-dot" />
-          Environmental reporting platform
-        </div>
-
         <h1 className="hp-hero-title">
           Report issues.<br />
           <span>Protect your city.</span>
@@ -526,7 +476,7 @@ export default function Home() {
 
       {/* ── Footer ──────────────────────────── */}
       <footer className="hp-footer">
-        <p>© 2026 EcoCheck · Hukulberi Team</p>
+        <p>© 2026 EcoCheck · Hukulberi Fin</p>
         <a href="https://github.com/TUES-2026-PBL-11-klas/Hukulberi-Fin-Eco-Check" target="_blank" rel="noopener">GitHub</a>
       </footer>
     </div>

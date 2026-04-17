@@ -68,6 +68,9 @@ jobs:
       - name: Apply database migrations
         run: npx prisma migrate deploy --schema apps/backend/prisma/schema.prisma
 
+      - name: Sync database schema (safety for fresh CI DB)
+        run: npx prisma db push --schema apps/backend/prisma/schema.prisma --skip-generate
+
       - name: Run backend tests with coverage
         run: npm run test:cov -w apps/backend
 

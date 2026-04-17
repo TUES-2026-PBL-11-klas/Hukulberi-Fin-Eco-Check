@@ -96,10 +96,10 @@ jobs:
         id: status
         run: |
           if [ "${{ needs.deploy.result }}" = "success" ]; then
-            echo "message=Deployed to K8s: \`${{ needs.build-and-push.outputs.image_tag }}\`" >> "$GITHUB_OUTPUT"
+            echo "message=Manifests updated for ArgoCD sync: \`${{ needs.build-and-push.outputs.image_tag }}\`" >> "$GITHUB_OUTPUT"
             echo "color=3066993" >> "$GITHUB_OUTPUT"
           else
-            echo "message=Deployment FAILED for \`${{ needs.build-and-push.outputs.image_tag }}\`" >> "$GITHUB_OUTPUT"
+            echo "message=CD FAILED for \`${{ needs.build-and-push.outputs.image_tag }}\`" >> "$GITHUB_OUTPUT"
             echo "color=15158332" >> "$GITHUB_OUTPUT"
           fi
 

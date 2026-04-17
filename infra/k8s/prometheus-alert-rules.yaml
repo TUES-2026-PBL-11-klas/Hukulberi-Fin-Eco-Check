@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-alert-rules
+  namespace: ecocheck
+data:
+  ecocheck-alerts.yml: |
+    groups:
+      - name: ecocheck.rules
+        rules:
+          - alert: BackendDown
+            expr: up{job="ecocheck-backend"} == 0
+            for: 1m
+            labels:
+              severity: critical
+              team: ecocheck
+            annotations:
+              summary: "EcoCheck backend is down"
+              description: "Prometheus cannot scrape ecocheck-backend for more than 1 minute."
+
+          - alert: HighBackendMemory
+            expr: ecocheck_backend_process_resident_memory_bytes{job="ecocheck-backend"} > 4e+08
+            for: 5m
+            labels:
+              severity: warning
+              team: ecocheck
+            annotations:
+              summary: "EcoCheck backend memory is high"
+              description: "Backend resident memory exceeded 400MB for 5 minutes."

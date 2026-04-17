@@ -53,6 +53,7 @@ type ReportListItem = {
 type DispatcherQueueItem = {
   id: string;
   title: string;
+  description: string;
   location: string;
   status: string;
   triageStatus: TriageStatus;
@@ -115,6 +116,7 @@ type ReportModelDelegate = {
     select: {
       id: true;
       title: true;
+      description: true;
       location: true;
       status: true;
       triageStatus: true;
@@ -277,6 +279,7 @@ export class ReportsService {
       select: {
         id: true,
         title: true,
+        description: true,
         location: true,
         status: true,
         triageStatus: true,
@@ -428,6 +431,17 @@ export class ReportsService {
     const prismaAny = this.prisma as unknown as {
       report: {
         count: (args?: { where?: Record<string, unknown> }) => Promise<number>;
+        findMany: (args: {
+          where: {
+            id: {
+              in: string[];
+            };
+          };
+          select: {
+            id: true;
+            createdAt: true;
+          };
+        }) => Promise<Array<{ id: string; createdAt: Date }>>;
       };
       statusHistory: {
         findMany: (args: {
@@ -498,6 +512,32 @@ export class ReportsService {
       const creationMap = new Map<string, Date>();
       for (const t of creationTransitions) {
         creationMap.set(t.reportId, t.changedAt);
+      }
+
+      const missingCreatedAtIds = Array.from(
+        new Set(
+          resolvedTransitions
+            .map((resolved) => resolved.reportId)
+            .filter((reportId) => !creationMap.has(reportId)),
+        ),
+      );
+
+      if (missingCreatedAtIds.length > 0) {
+        const reports = await prismaAny.report.findMany({
+          where: {
+            id: {
+              in: missingCreatedAtIds,
+            },
+          },
+          select: {
+            id: true,
+            createdAt: true,
+          },
+        });
+
+        for (const report of reports) {
+          creationMap.set(report.id, report.createdAt);
+        }
       }
 
       let totalMs = 0;

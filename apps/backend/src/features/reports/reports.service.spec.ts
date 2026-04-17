@@ -409,5 +409,43 @@ describe('ReportsService — Dispatcher Operations', () => {
       const stats = await service.getStats();
       expect(stats.avgResolutionMs).toBeGreaterThan(0);
     });
+
+    it('should fall back to report.createdAt when NEW history is missing', async () => {
+      mockPrisma.report.count
+        .mockResolvedValueOnce(0) // NEW
+        .mockResolvedValueOnce(0) // IN_PROGRESS
+        .mockResolvedValueOnce(1) // RESOLVED
+        .mockResolvedValueOnce(0) // LOW
+        .mockResolvedValueOnce(0) // MEDIUM
+        .mockResolvedValueOnce(0) // HIGH
+        .mockResolvedValueOnce(1) // CRITICAL
+        .mockResolvedValueOnce(1) // WASTE
+        .mockResolvedValueOnce(0) // GREENERY
+        .mockResolvedValueOnce(0) // ROAD
+        .mockResolvedValueOnce(0) // PARKING
+        .mockResolvedValueOnce(0) // WATER
+        .mockResolvedValueOnce(0); // OTHER
+
+      const resolvedAt = new Date('2026-04-18T11:00:00.000Z');
+      const createdAt = new Date('2026-04-18T10:00:00.000Z');
+
+      mockPrisma.statusHistory.findMany
+        .mockResolvedValueOnce([
+          { reportId: 'r-legacy', changedAt: resolvedAt },
+        ])
+        .mockResolvedValueOnce([]);
+
+      mockPrisma.report.findMany.mockResolvedValueOnce([
+        { id: 'r-legacy', createdAt },
+      ]);
+
+      const stats = await service.getStats();
+
+      expect(stats.avgResolutionMs).toBe(3_600_000);
+      expect(mockPrisma.report.findMany).toHaveBeenCalledWith({
+        where: { id: { in: ['r-legacy'] } },
+        select: { id: true, createdAt: true },
+      });
+    });
   });
 });

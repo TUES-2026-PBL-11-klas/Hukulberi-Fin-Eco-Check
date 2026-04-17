@@ -20,6 +20,7 @@ type AiUrgency = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 type QueueRow = {
   id: string;
   title: string;
+  description: string;
   location: string;
   status: ReportStatus;
   triageStatus: TriageStatus;
@@ -361,6 +362,9 @@ export default function DispatcherPage() {
                     <div>
                       <h2 style={styles.cardTitle}>{report.title}</h2>
                       <p style={styles.cardMeta}>{report.location}</p>
+                      <p style={styles.cardDescription}>
+                        {formatDescriptionPreview(report.description)}
+                      </p>
                     </div>
 
                     <div style={styles.badgeRow}>
@@ -469,6 +473,13 @@ function formatLabel(value: string): string {
 function formatConfidence(confidence: number | null): string {
   if (typeof confidence !== "number") return "-";
   return `${Math.round(confidence * 100)}%`;
+}
+
+function formatDescriptionPreview(description: string): string {
+  const normalized = description.trim();
+  if (!normalized) return "No description provided.";
+  if (normalized.length <= 220) return normalized;
+  return `${normalized.slice(0, 220).trimEnd()}…`;
 }
 
 function statusBadge(status: ReportStatus): React.CSSProperties {
@@ -747,6 +758,14 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "0.82rem",
     color: "#55615d",
     margin: "0.2rem 0 0 0",
+  },
+  cardDescription: {
+    fontFamily: "var(--font-inter), sans-serif",
+    fontSize: "0.83rem",
+    lineHeight: 1.45,
+    color: "#3d4743",
+    margin: "0.4rem 0 0 0",
+    maxWidth: "62ch",
   },
   badgeRow: {
     display: "flex",

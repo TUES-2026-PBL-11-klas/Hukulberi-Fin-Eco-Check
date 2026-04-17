@@ -33,6 +33,25 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ecocheck_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ecocheck_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ecocheck_test?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/ecocheck_test?schema=public
+      JWT_SECRET: ci-test-secret
+      GEMINI_API_KEY: change_me
     steps:
       - uses: actions/checkout@v4
 
@@ -46,8 +65,14 @@ jobs:
       - name: Generate Prisma client (backend)
         run: npm run prisma:generate -w apps/backend
 
+      - name: Apply database migrations
+        run: npx prisma migrate deploy --schema apps/backend/prisma/schema.prisma
+
       - name: Run backend tests with coverage
         run: npm run test:cov -w apps/backend
+
+      - name: Run backend e2e integration tests
+        run: npm run test:e2e -w apps/backend
 
       - name: Upload coverage report
         if: always()

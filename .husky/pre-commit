@@ -1,0 +1,9 @@
+set -e
+
+echo "[pre-commit] 1/2 Secret scan (Gitleaks)..."
+npm run precommit:secrets
+
+echo "[pre-commit] 2/2 Quality checks (lint)..."
+npm run precommit:quality
+
+echo "[pre-commit] OK: all checks passed."

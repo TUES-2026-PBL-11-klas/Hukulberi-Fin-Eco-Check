@@ -1,0 +1,113 @@
+name: CD
+
+on:
+  push:
+    branches: [main, dev]
+    paths-ignore:
+      - infra/k8s/kustomization.yaml
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    env:
+      BACKEND_IMAGE: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/ecocheck-backend
+      FRONTEND_IMAGE: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/ecocheck-frontend
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+      backend_image: ${{ steps.images.outputs.backend }}
+      frontend_image: ${{ steps.images.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate image tag
+        id: meta
+        run: echo "tag=$(echo $GITHUB_SHA | head -c 7)" >> "$GITHUB_OUTPUT"
+
+      - name: Export image names
+        id: images
+        run: |
+          echo "backend=${{ env.BACKEND_IMAGE }}" >> "$GITHUB_OUTPUT"
+          echo "frontend=${{ env.FRONTEND_IMAGE }}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.BACKEND_IMAGE }}:latest
+
+      - name: Build & push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.FRONTEND_IMAGE }}:latest
+
+  deploy:
+    name: Update K8s Manifests
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Kustomize
+        uses: imranismail/setup-kustomize@v2
+
+      - name: Update image tags
+        working-directory: infra/k8s
+        run: |
+          TAG="${{ needs.build-and-push.outputs.image_tag }}"
+          BACKEND_IMAGE="docker.io/${{ secrets.DOCKERHUB_USERNAME }}/ecocheck-backend"
+          FRONTEND_IMAGE="docker.io/${{ secrets.DOCKERHUB_USERNAME }}/ecocheck-frontend"
+          kustomize edit set image "${BACKEND_IMAGE}=${BACKEND_IMAGE}:${TAG}"
+          kustomize edit set image "${FRONTEND_IMAGE}=${FRONTEND_IMAGE}:${TAG}"
+
+      - name: Commit updated manifests
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add infra/k8s/kustomization.yaml
+          git diff --staged --quiet || git commit -m "chore: update image tags to ${{ needs.build-and-push.outputs.image_tag }}"
+          git push
+
+  notify:
+    name: Discord Notification
+    needs: [build-and-push, deploy]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set status
+        id: status
+        run: |
+          if [ "${{ needs.deploy.result }}" = "success" ]; then
+            echo "message=Manifests updated for ArgoCD sync: \`${{ needs.build-and-push.outputs.image_tag }}\`" >> "$GITHUB_OUTPUT"
+            echo "color=3066993" >> "$GITHUB_OUTPUT"
+          else
+            echo "message=CD FAILED for \`${{ needs.build-and-push.outputs.image_tag }}\`" >> "$GITHUB_OUTPUT"
+            echo "color=15158332" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Send Discord webhook
+        uses: Ilshidur/action-discord@0.3.2
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        with:
+          args: "${{ steps.status.outputs.message }} — ${{ github.event.head_commit.message }}"

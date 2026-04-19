@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+:root {
+  /* Primary (Deep Forest) */
+  --primary: #00513f;
+  --primary-container: #006b54;
+  --on-primary: #ffffff;
+  --primary-fixed: #a0f2d4;
+
+  /* Secondary (Atmospheric Sky) */
+  --secondary: #4a635c;
+  --secondary-container: #cce8de;
+  --secondary-fixed: #d0e8df;
+  --on-secondary-fixed: #06201a;
+
+  /* Tertiary */
+  --tertiary-fixed-dim: #a8c8bd;
+
+  /* Error */
+  --error: #ba1a1a;
+  --error-container: #ffdad6;
+
+  /* Surfaces */
+  --surface: #f8f9fa;
+  --surface-container-low: #f3f4f5;
+  --surface-container-lowest: #ffffff;
+  --surface-container-high: #ecedef;
+  --surface-container-highest: #e6e7e9;
+  --surface-bright: #f8f9fa;
+  --surface-variant: #dbe5df;
+
+  /* Text */
+  --on-surface: #191c1b;
+  --on-surface-variant: #404943;
+  --outline-variant: #bec9c3;
+
+  --background: #f8f9fa;
+  --foreground: #191c1b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-container: var(--primary-container);
+  --color-on-primary: var(--on-primary);
+  --color-surface: var(--surface);
+  --color-surface-low: var(--surface-container-low);
+  --color-surface-lowest: var(--surface-container-lowest);
+  --color-surface-high: var(--surface-container-high);
+  --color-surface-highest: var(--surface-container-highest);
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-error: var(--error);
+  --color-error-container: var(--error-container);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-manrope);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+}

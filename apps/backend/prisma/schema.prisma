@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  CITIZEN
+  ADMIN
+  DISPATCHER
+}
+
+enum ReportStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum TriageStatus {
+  PENDING
+  TRIAGED
+  FAILED
+}
+
+enum AiUrgency {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AiCategory {
+  WASTE
+  GREENERY
+  ROAD_INFRASTRUCTURE
+  ILLEGAL_PARKING
+  WATER_SEWER
+  OTHER
+}
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  password    String
+  displayName String?
+  role        UserRole @default(CITIZEN)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  reports     Report[]
+
+  @@map("users")
+}
+
+model Report {
+  id          String       @id @default(uuid())
+  title       String
+  description String
+  location    String
+  photoUrl    String?
+  status      ReportStatus @default(NEW)
+
+  // AI triage fields — populated by Boris's Gemini service
+  triageStatus TriageStatus @default(PENDING)
+  aiCategory   AiCategory?
+  aiUrgency    AiUrgency?
+  aiConfidence Float?
+  aiReasoning  String?
+  triagedAt    DateTime?
+
+  // Dispatcher assignment — populated by Georgi's service
+  assignedUnit String?
+  assignedAt   DateTime?
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Status history — tracked by Georgi's dispatcher service
+  statusHistory StatusHistory[]
+
+  @@map("reports")
+}
+
+model StatusHistory {
+  id         String        @id @default(uuid())
+  reportId   String
+  report     Report        @relation(fields: [reportId], references: [id])
+  fromStatus ReportStatus?
+  toStatus   ReportStatus
+  changedBy  String?       // userId of dispatcher who changed it
+  changedAt  DateTime      @default(now())
+
+  @@index([reportId])
+  @@map("status_history")
+}
+
+model Config {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("configs")
+}
+
+model FeatureFlag {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  enabled     Boolean  @default(false)
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("feature_flags")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String   // e.g. "CONFIG_CREATED", "CONFIG_UPDATED", "CONFIG_DELETED", "FLAG_TOGGLED"
+  entity    String   // e.g. "Config", "FeatureFlag"
+  entityId  String?  // the key/ID of the affected record
+  oldValue  String?  // JSON snapshot of previous state
+  newValue  String?  // JSON snapshot of new state
+  userId    String?  // who performed the action
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: ecocheck
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: docker.io/darkata/ecocheck-frontend:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              if [ -d /workspace/.next/static ]; then
+                mkdir -p /workspace/apps/frontend/.next
+                ln -sfn /workspace/.next/static /workspace/apps/frontend/.next/static
+              fi
+              if [ -d /workspace/public ]; then
+                ln -sfn /workspace/public /workspace/apps/frontend/public
+              fi
+              exec node apps/frontend/server.js
+          ports:
+            - containerPort: 3000
+          env:
+            - name: HOSTNAME
+              value: 0.0.0.0
+            - name: NEXT_PUBLIC_API_URL
+              value: http://api.ecocheck.local

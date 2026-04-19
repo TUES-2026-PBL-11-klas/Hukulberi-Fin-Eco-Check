@@ -1,0 +1,44 @@
+# Node
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+
+# Logs
+logs/
+*.log
+coverage/
+
+# OS
+Thumbs.db
+DS_Store
+.DS_Store
+
+# Editor directories and files
+.vscode/
+.idea/
+
+# Environment files (ignore actual secrets)
+# Keep `.env.example` committed as a template; ignore real envs
+.env
+.env.local
+.env.*.local
+
+# Docker
+docker-compose.override.yml
+
+# Kubernetes
+.kube/
+
+# Misc
+.cache/
+.turbo/
+/.parcel-cache/
+
+/generated/prisma

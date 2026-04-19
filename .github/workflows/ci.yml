@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, dev]
+
+env:
+  NODE_VERSION: "20.x"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Generate Prisma client (backend)
+        run: npm run prisma:generate -w apps/backend
+
+      - name: Lint backend
+        run: npm run lint:check -w apps/backend
+
+      - name: Lint frontend
+        run: npm run lint -w apps/frontend
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ecocheck_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ecocheck_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ecocheck_test?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/ecocheck_test?schema=public
+      JWT_SECRET: ci-test-secret
+      GEMINI_API_KEY: change_me
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Generate Prisma client (backend)
+        run: npm run prisma:generate -w apps/backend
+
+      - name: Apply database migrations
+        run: npx prisma migrate deploy --schema apps/backend/prisma/schema.prisma
+
+      - name: Sync database schema (safety for fresh CI DB)
+        run: npx prisma db push --schema apps/backend/prisma/schema.prisma --skip-generate
+
+      - name: Run backend tests with coverage
+        run: npm run test:cov -w apps/backend
+
+      - name: Run backend e2e integration tests
+        run: npm run test:e2e -w apps/backend
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: apps/backend/coverage/
+
+  build:
+    name: Build
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Generate Prisma client (backend)
+        run: npm run prisma:generate -w apps/backend
+
+      - name: Install Linux native frontend binaries
+        run: npm install -w apps/frontend --no-save @next/swc-linux-x64-gnu@16.1.6 lightningcss-linux-x64-gnu@1.31.1 @tailwindcss/oxide-linux-x64-gnu@4.2.1
+
+      - name: Build backend
+        run: npm run build -w apps/backend
+
+      - name: Build frontend
+        run: npm run build -w apps/frontend
+
+  notify:
+    name: Discord Notification
+    needs: [lint, test, build]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set status
+        id: status
+        run: |
+          if [ "${{ needs.build.result }}" = "success" ]; then
+            echo "message=CI passed for PR #${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+            echo "color=3066993" >> "$GITHUB_OUTPUT"
+          else
+            echo "message=CI failed for PR #${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+            echo "color=15158332" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Send Discord webhook
+        uses: Ilshidur/action-discord@0.4.0
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        with:
+          args: "${{ steps.status.outputs.message }} — ${{ github.event.pull_request.title }}"

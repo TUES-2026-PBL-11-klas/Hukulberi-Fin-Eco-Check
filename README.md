@@ -144,7 +144,9 @@ $env:DATABASE_URL="postgresql://user:password@host:5432/dbname"
 $env:DIRECT_URL="postgresql://user:password@host:5432/dbname"
 $env:JWT_SECRET="replace_with_strong_secret"
 $env:GEMINI_API_KEY="replace_with_gemini_key"
-$env:CORS_ORIGIN="http://app.ecocheck.local"
+# If you access frontend via localhost:3000 (Option A), use localhost origin.
+# If you access via app.ecocheck.local (Option B), set http://app.ecocheck.local instead.
+$env:CORS_ORIGIN="http://localhost:3000"
 $env:NODE_ENV="production"
 $env:PORT="3000"
 
@@ -168,7 +170,9 @@ export DATABASE_URL="postgresql://user:password@host:5432/dbname"
 export DIRECT_URL="postgresql://user:password@host:5432/dbname"
 export JWT_SECRET="replace_with_strong_secret"
 export GEMINI_API_KEY="replace_with_gemini_key"
-export CORS_ORIGIN="http://app.ecocheck.local"
+# If you access frontend via localhost:3000 (Option A), use localhost origin.
+# If you access via app.ecocheck.local (Option B), set http://app.ecocheck.local instead.
+export CORS_ORIGIN="http://localhost:3000"
 export NODE_ENV="production"
 export PORT="3000"
 bash scripts/bootstrap-backend-secret.sh

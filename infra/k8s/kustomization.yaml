@@ -21,8 +21,7 @@ resources:
 - grafana-deployment.yaml
 - grafana-service.yaml
 images:
-- newTag: 28c54ac
 - name: docker.io/darkata/ecocheck-backend
-  newTag: "7363966"
+  newTag: "28c54ac"
 - name: docker.io/darkata/ecocheck-frontend
-  newTag: "7363966"
+  newTag: "28c54ac"

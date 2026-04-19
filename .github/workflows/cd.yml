@@ -75,8 +75,8 @@ jobs:
         working-directory: infra/k8s
         run: |
           TAG="${{ needs.build-and-push.outputs.image_tag }}"
-          kustomize edit set image "${{ needs.build-and-push.outputs.backend_image }}:${TAG}"
-          kustomize edit set image "${{ needs.build-and-push.outputs.frontend_image }}:${TAG}"
+          kustomize edit set image "${{ needs.build-and-push.outputs.backend_image }}=${{ needs.build-and-push.outputs.backend_image }}:${TAG}"
+          kustomize edit set image "${{ needs.build-and-push.outputs.frontend_image }}=${{ needs.build-and-push.outputs.frontend_image }}:${TAG}"
 
       - name: Commit updated manifests
         run: |

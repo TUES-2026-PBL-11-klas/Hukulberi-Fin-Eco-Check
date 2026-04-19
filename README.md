@@ -365,7 +365,19 @@ Hukulberi-Fin-Eco-Check/
 ├── infra/
 │   ├── k8s/                       # Kubernetes manifests (deployments, services, ingress)
 │   └── argocd/                    # ArgoCD Application manifest
+├── docs/                          # Architecture, ER, Infra and UML diagrams
 ├── prisma/                        # Root Prisma config artifacts
 ├── package.json                   # Monorepo scripts/workspaces
 └── README.md
 ```
+
+## 7. Диаграми и документация (docs)
+
+Всички диаграми са налични в [docs](docs/):
+
+- [Архитектурна диаграма](docs/architecture-diagram.md)
+- [ER диаграма на базата данни](docs/database-er-diagram.md)
+- [Инфраструктурна диаграма](docs/infra-diagram.md)
+- [UML Use Case](docs/uml-use-case-diagram.md)
+- [UML Class](docs/uml-class-diagram.md)
+- [UML Sequence](docs/uml-sequence-diagram.md)

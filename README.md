@@ -126,18 +126,96 @@ docker run --rm -d --name ecocheck-frontend -p 3000:3000 -e NEXT_PUBLIC_API_URL=
 
 ### 3.4. Kubernetes / ArgoCD
 
-1. Make sure `backend-secret` contains real values (not placeholders) before deploy.
-2. Apply the manifests:
+Use these steps from the repository root (`Hukulberi-Fin-Eco-Check`).
+
+1. Verify Kubernetes context:
+
+```bash
+kubectl config current-context
+kubectl get nodes
+```
+
+2. Create/update `backend-secret` with real values.
+
+PowerShell (Windows):
+
+```powershell
+$env:DATABASE_URL="postgresql://user:password@host:5432/dbname"
+$env:DIRECT_URL="postgresql://user:password@host:5432/dbname"
+$env:JWT_SECRET="replace_with_strong_secret"
+$env:GEMINI_API_KEY="replace_with_gemini_key"
+$env:CORS_ORIGIN="http://app.ecocheck.local"
+$env:NODE_ENV="production"
+$env:PORT="3000"
+
+kubectl create namespace ecocheck --dry-run=client -o yaml | kubectl apply -f -
+kubectl create secret generic backend-secret `
+	--namespace ecocheck `
+	--from-literal=DATABASE_URL=$env:DATABASE_URL `
+	--from-literal=DIRECT_URL=$env:DIRECT_URL `
+	--from-literal=JWT_SECRET=$env:JWT_SECRET `
+	--from-literal=GEMINI_API_KEY=$env:GEMINI_API_KEY `
+	--from-literal=CORS_ORIGIN=$env:CORS_ORIGIN `
+	--from-literal=NODE_ENV=$env:NODE_ENV `
+	--from-literal=PORT=$env:PORT `
+	--dry-run=client -o yaml | kubectl apply -f -
+```
+
+Linux/macOS alternative:
+
+```bash
+export DATABASE_URL="postgresql://user:password@host:5432/dbname"
+export DIRECT_URL="postgresql://user:password@host:5432/dbname"
+export JWT_SECRET="replace_with_strong_secret"
+export GEMINI_API_KEY="replace_with_gemini_key"
+export CORS_ORIGIN="http://app.ecocheck.local"
+export NODE_ENV="production"
+export PORT="3000"
+bash scripts/bootstrap-backend-secret.sh
+```
+
+3. Apply Kubernetes manifests:
 
 ```bash
 kubectl apply -k infra/k8s
+kubectl -n ecocheck get pods
+kubectl -n ecocheck get svc
 ```
 
-3. For ArgoCD sync:
+4. Register ArgoCD application:
 
 ```bash
 kubectl apply -f infra/argocd/application.yaml
+kubectl -n argocd get application ecocheck
 ```
+
+5. Access the system.
+
+Option A (works immediately, no ingress controller required):
+
+```bash
+kubectl -n ecocheck port-forward svc/frontend 3000:3000
+kubectl -n ecocheck port-forward svc/backend 3001:3000
+kubectl -n ecocheck port-forward svc/grafana 3002:3000
+kubectl -n ecocheck port-forward svc/alertmanager 9093:9093
+```
+
+Open:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:3001
+- Swagger: http://localhost:3001/api/docs
+- Grafana: http://localhost:3002
+- Alertmanager: http://localhost:9093
+
+Option B (custom hostnames via Ingress):
+- Install an ingress controller first (the project ingress is configured with class `traefik`).
+- Then add this hosts entry:
+
+```text
+127.0.0.1 app.ecocheck.local api.ecocheck.local grafana.ecocheck.local alerts.ecocheck.local
+```
+
+- If your ingress endpoint is not localhost, replace `127.0.0.1` with the ingress IP.
 
 ## 4. Използвани технологии и версии
 

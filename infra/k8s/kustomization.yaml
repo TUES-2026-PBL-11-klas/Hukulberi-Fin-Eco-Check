@@ -23,7 +23,7 @@ resources:
 images:
 - name: docker.io/darkata/ecocheck-backend
   newName: docker.io/darkata/ecocheck-backend
-  newTag: d62a0e0
+  newTag: 46cb6c2
 - name: docker.io/darkata/ecocheck-frontend
   newName: docker.io/darkata/ecocheck-frontend
-  newTag: d62a0e0
+  newTag: 46cb6c2

@@ -33,6 +33,82 @@ graph TD
 
 The diagram is logical and shows the main flows between frontend, backend, database, AI integration, and the deployment layer.
 
+### 2.1. Схема на БД (ER диаграма)
+
+```mermaid
+erDiagram
+	User ||--o{ Report : submits
+	Report ||--o{ StatusHistory : tracks
+
+	User {
+		string id PK
+		string email UK
+		string password
+		string displayName
+		enum role
+		datetime createdAt
+		datetime updatedAt
+	}
+
+	Report {
+		string id PK
+		string userId FK
+		string title
+		string description
+		string location
+		string photoUrl
+		enum status
+		enum triageStatus
+		enum aiCategory
+		enum aiUrgency
+		float aiConfidence
+		string aiReasoning
+		string assignedUnit
+		datetime assignedAt
+		datetime triagedAt
+		datetime createdAt
+		datetime updatedAt
+	}
+
+	StatusHistory {
+		string id PK
+		string reportId FK
+		enum fromStatus
+		enum toStatus
+		string changedBy
+		datetime changedAt
+	}
+
+	Config {
+		string id PK
+		string key UK
+		string value
+		string description
+		datetime createdAt
+		datetime updatedAt
+	}
+
+	FeatureFlag {
+		string id PK
+		string key UK
+		boolean enabled
+		string description
+		datetime createdAt
+		datetime updatedAt
+	}
+
+	AuditLog {
+		string id PK
+		string action
+		string entity
+		string entityId
+		string oldValue
+		string newValue
+		string userId
+		datetime createdAt
+	}
+```
+
 ## 3. Инструкции за стартиране
 
 ### 3.1. Предварителни изисквания

@@ -36,3 +36,13 @@ spec:
                 name: grafana
                 port:
                   number: 3000
+    - host: alerts.ecocheck.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: alertmanager
+                port:
+                  number: 9093
